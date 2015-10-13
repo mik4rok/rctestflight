@@ -20,6 +20,9 @@ public:
     // destructor
     virtual ~AC_PrecLand_Backend() {}
 
+    // does the sensor report in body frame? 
+    virtual MAV_FRAME get_frame_of_reference():
+    
     // init - perform any required initialisation of backend controller
     virtual void init() = 0;
 

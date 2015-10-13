@@ -136,7 +136,17 @@ void AC_PrecLand::calc_angles_and_pos(float alt_above_terrain_cm)
     }
 
     // get body-frame angles to target from backend
-    if (!_backend->get_angle_to_target(_bf_angle_to_target.x, _bf_angle_to_target.y)) {
+    if (_backend->is_body_frame && 
+        _backend->get_body_frame_angle_to_target(_bf_angle_to_target.x, _bf_angle_to_target.y)) {
+        // subtract vehicle lean angles
+        float x_rad = _bf_angle_to_target.x - _ahrs.roll;
+        float y_rad = -_bf_angle_to_target.y + _ahrs.pitch;
+
+        // rotate to earth-frame angles
+        _ef_angle_to_target.x = y_rad*_ahrs.cos_yaw() - x_rad*_ahrs.sin_yaw();
+        _ef_angle_to_target.y = y_rad*_ahrs.sin_yaw() + x_rad*_ahrs.cos_yaw();
+    }else
+    {
         _have_estimate = false;
         return;
     }

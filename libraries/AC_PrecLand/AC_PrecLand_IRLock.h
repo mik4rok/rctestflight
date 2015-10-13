@@ -22,6 +22,9 @@ public:
     // Constructor
     AC_PrecLand_IRLock(const AC_PrecLand& frontend, AC_PrecLand::precland_state& state);
 
+    // IRLock is hard-mounted to the frame of the vehicle, so it will always be in body-frame
+    MAV_FRAME get_frame_of_reference() { return MAV_FRAME_BODY_NED; }
+    
     // init - perform any required initialisation of backend controller
     void init();
 
@@ -29,11 +32,11 @@ public:
     //  returns true if new data available
     bool update();
 
-    // get_angle_to_target - returns body frame angles (in radians) to target
+    // get_body_frame_angle_to_target - returns body frame angles (in radians) to target
     //  returns true if angles are available, false if not (i.e. no target)
     //  x_angle_rad : body-frame roll direction, positive = target is to right (looking down)
     //  y_angle_rad : body-frame pitch direction, postiive = target is forward (looking down)
-    bool get_angle_to_target(float &x_angle_rad, float &y_angle_rad);
+    bool get_body_frame_angle_to_target(float &x_angle_rad, float &y_angle_rad);
 
     // handle_msg - parses a mavlink message from the companion computer
     void handle_msg(mavlink_message_t* msg) { /* do nothing */ }

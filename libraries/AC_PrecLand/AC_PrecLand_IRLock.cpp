@@ -30,11 +30,11 @@ bool AC_PrecLand_IRLock::update()
     return (irlock.update());
 }
 
-// get_angle_to_target - returns body frame angles (in radians) to target
+// get_body_frame_angle_to_target - returns body frame angles (in radians) to target
 //  returns true if angles are available, false if not (i.e. no target)
 //  x_angle_rad : body-frame roll direction, positive = target is to right (looking down)
 //  y_angle_rad : body-frame pitch direction, postiive = target is forward (looking down)
-bool AC_PrecLand_IRLock::get_angle_to_target(float &x_angle_rad, float &y_angle_rad)
+bool AC_PrecLand_IRLock::get_body_frame_angle_to_target(float &x_angle_rad, float &y_angle_rad)
 {
     return irlock.get_angle_to_target(x_angle_rad, y_angle_rad);
 }
