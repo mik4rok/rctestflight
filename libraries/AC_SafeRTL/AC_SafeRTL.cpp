@@ -27,24 +27,20 @@ Path::Path()
     path = new Vector3f[MAX_PATH_LEN];
     last_index = 0;
     worst_length = 0;
-    // initialize the RDP stack
     RDP_Stack * stack = new RDP_Stack();
-
-    foo->member_var = 10;
-    foo->member_func();
 }
 
 /**
-*   Simplifies a 3D path, according to the Ramer-Douglas-Peucker algorithm. In order to avoid allocating
+*   Simplifies a 3D path, according to the Ramer-Douglas-Peucker algorithm.
 *   Returns the number of items which were removed.
 */
 int Path::rdp(Vector3f *path, int start_index, int end_index, float epsilon)
 {
     start_finish sf = {start_index, end_index};
-    stack.push(sf); // TODO initialize it somewhere
+    stack->push(sf);
     global_start = start;
     // The bitmask which represents which points to keep (1) and which to delete(0)
-    std::bitset<end_index-start_index> bitmask(0x0);
+    std::bitset<end_index-start_index> bitmask = bitset<end_index-start_index>().set(); //initialized to 1
     bitmask.set();
     while (!stack.empty()) {
         start_finish tmp = stack.pop();
@@ -64,16 +60,29 @@ int Path::rdp(Vector3f *path, int start_index, int end_index, float epsilon)
         }
 
         if (dmax > epsilon) {
-            stack.push(struct start_finish{start_index, index});
-            stack.push(struct start_finish{index, last_index});
+            stack.push(start_finish{start_index, index});
+            stack.push(start_finish{index, end_index});
         }
         else {
             for (int i = startIndex + 1; i < lastIndex; ++i) {
                 bitmask[i-global_start] = false;
             }
         }
-        // TODO now use std::move of memset or something to shift things arount, and return the number of items deleted.
     }
+    // in-place removal of objects from the array based on the bitset object.
+    int i = start_index;
+    int j = i;
+
+    int removed = 0; // counts number of items removed from list
+    while (++i < end_index){
+        if (bitmask[i]){ //keep this item
+            path[++j] = path[i];
+        } else {
+            removed++;
+        }
+    }
+    return removed;
+}
 
 void Path::append_if_far_enough(Vector3f p) {
     if (HYPOT(p, path[last_index]) > position_delta) {

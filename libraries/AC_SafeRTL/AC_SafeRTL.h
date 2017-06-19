@@ -24,7 +24,7 @@ typedef struct dist_point {
 
 class Path {
     // points are stored in meters from EKF origin in NED
-    Vector3f * path; // TODO would a linked list be more appropriate? Definitely would be easier to prune points out.
+    Vector3f * path;
     int last_index, worst_length;
 public:
     void append_if_far_enough(Vector3f);
