@@ -4,20 +4,20 @@
 RDP_Stack::RDP_Stack()
 {
     stack = new start_finish[RDP_STACK_LEN];
-    top = &stack;
+    top = stack;
 }
 
-RDP_Stack::push(start_finish *item)
+void RDP_Stack::push(start_finish item)
 {
-    stack[++top] = *item;
+    *(++top) = item;
 }
 
-RDP_Stack::pop()
+start_finish RDP_Stack::pop()
 {
-    return stack[top--];
+    return *(top--);
 }
 
-RDP_Stack::empty()
+bool RDP_Stack::empty()
 {
     return stack == top;
 }
@@ -27,44 +27,43 @@ Path::Path()
     path = new Vector3f[MAX_PATH_LEN];
     last_index = 0;
     worst_length = 0;
-    RDP_Stack * stack = new RDP_Stack();
+    stack = new RDP_Stack();
 }
 
 /**
 *   Simplifies a 3D path, according to the Ramer-Douglas-Peucker algorithm.
-*   Returns the number of items which were removed.
+*   Returns the number of items which were removed. TODO verify that this is producing correct output.
 */
-int Path::rdp(Vector3f *path, int start_index, int end_index, float epsilon)
+int Path::_rdp(uint8_t start_index, uint8_t end_index, float epsilon)
 {
     start_finish sf = {start_index, end_index};
     stack->push(sf);
-    global_start = start;
+    int global_start = start_index;
     // The bitmask which represents which points to keep (1) and which to delete(0)
-    std::bitset<end_index-start_index> bitmask = bitset<end_index-start_index>().set(); //initialized to 1
-    bitmask.set();
-    while (!stack.empty()) {
-        start_finish tmp = stack.pop();
-        start_index = tmp->start;
-        end_index = tmp->finish;
+    auto bitmask = std::bitset<MAX_PATH_LEN>().set(); //initialized to 1
+    while (!stack->empty()) {
+        start_finish tmp = stack->pop();
+        start_index = tmp.start;
+        end_index = tmp.finish;
 
-        float max_dist = 0f;
-        int index = start_index;
+        float max_dist = 0.0f;
+        uint8_t index = start_index;
         for (int i = index + 1; i < end_index; i++) {
             if (bitmask[i-global_start]) {
-                float dist = point_line_dist(path[i], path[start_index], path[end_index]);
-                if (dist > dist_max) {
+                float dist = _point_line_dist(path[i], path[start_index], path[end_index]);
+                if (dist > max_dist) {
                     index = i;
                     max_dist = dist;
                 }
             }
         }
 
-        if (dmax > epsilon) {
-            stack.push(start_finish{start_index, index});
-            stack.push(start_finish{index, end_index});
+        if (max_dist > epsilon) {
+            stack->push(start_finish{start_index, index});
+            stack->push(start_finish{index, end_index});
         }
         else {
-            for (int i = startIndex + 1; i < lastIndex; ++i) {
+            for (int i = start_index + 1; i < end_index; ++i) {
                 bitmask[i-global_start] = false;
             }
         }
@@ -85,7 +84,7 @@ int Path::rdp(Vector3f *path, int start_index, int end_index, float epsilon)
 }
 
 void Path::append_if_far_enough(Vector3f p) {
-    if (HYPOT(p, path[last_index]) > position_delta) {
+    if (HYPOT(p, path[last_index]) > POSITION_DELTA) {
         path[last_index++] = p;
     }
 }
@@ -94,7 +93,7 @@ void Path::routine_cleanup() {
     // We only do a routine cleanup if the memory is almost full. Cleanup deletes potentially useful points,
     // so it would be bad to clean up if we don't have to
     if (last_index > MAX_PATH_LEN - 2) {
-        Path::cleanup();
+        Path::_cleanup();
         if (last_index > MAX_PATH_LEN - 2) { // if cleanup was unsuccesful
             ;// TODO crap out, cleanly
         }
@@ -105,7 +104,7 @@ void Path::routine_cleanup() {
 *  Run this method only when preparing to initiate the RTL procedure.
 */
 void Path::thorough_cleanup() {
-    while (Path::cleanup());
+    while (Path::_cleanup());
 }
 
 /**
@@ -129,22 +128,22 @@ void Path::thorough_cleanup() {
 *    Returns true if pruning occured. In this case, running cleanup() again might prune even more.
 *    But if no pruning occured (returns False) then running the algorithm again will change nothing.
 */
-bool Path::cleanup() {
+bool Path::_cleanup() {
     // pruning step
     bool pruning_occured = FALSE;
     for (int i = 0; i <= last_index; i++) {
         for (int j = last_index - 1; j > i + 1; j--) {
-            distance_point dp = segment_segment_dist(path[i], path[i+1], path[j], path[j+1]);
-            if (dp->distance <= PRUNING_DELTA) {
+            dist_point dp = _segment_segment_dist(path[i], path[i+1], path[j], path[j+1]);
+            if (dp.distance <= PRUNING_DELTA) {
                 // TODO prune path. Not ideal with an array. Looks like this in python: self.path = self.path[:i+1] + [dist[1]] + self.path[j+1:]
                 // probably do this with memset or maybe std::move
-                pruning_occured = True;
-                goto simplification_step; // best way I could think of to break out of nested loops. sorry.
+                pruning_occured = true;
+                goto simplification_step; // break out of both loops
             }
         }
     }
     simplification_step:
-    rdp(Vector3f *path, last_index, RDP_EPSILON);
+    _rdp(0, last_index, RDP_EPSILON);
 
     return pruning_occured;
 }
@@ -168,19 +167,19 @@ dist_point Path::_segment_segment_dist(Vector3f p1, Vector3f p2, Vector3f p3, Ve
     float e = v*w;
 
     // the parameter for the position on line1 and line2 which define the closest points.
-    float t1 = 0f;
-    float t2 = 0f;
+    float t1 = 0.0f;
+    float t2 = 0.0f;
 
     if ((a*c)-(b*b) < SMALL_FLOAT) { // almost parallel. This avoids division by 0.
-        return {FLT_MAX, Vector3f(0, 0, 0)};
+        return {FLT_MAX, Vector3f(0.0f, 0.0f, 0.0f)};
     }
     else {
         t1 = (b*e-c*d)/(a*c-b*b);
         t2 = (a*e-b*d)/(a*c-b*b);
 
         // restrict both parameters between 0 and 1.
-        t1 = min(max(0,t1),1);
-        t2 = min(max(0,t2),1);
+        t1 = constrain_float(t1, 0.0f, 1.0f);
+        t2 = constrain_float(t2, 0.0f, 1.0f);
 
         // difference between two closest points
         Vector3f dP = w+t1*u-t2*v;
@@ -200,8 +199,8 @@ float Path::_point_line_dist(Vector3f point, Vector3f line1, Vector3f line2) {
     float c = HYPOT(line2, point);
 
     // semiperimeter of triangle
-    float s = (a+b+c)/2f;
+    float s = (a+b+c)/2.0f;
 
-    area = sqrt(max(0f,s*(s-a)*(s-b)*(s-c))); //inner part must be constrained above 0 because a triangle where all 3 points could be on a line. float rounding could push this under 0.
-    return 2*area/b;
+    area = sqrt(max(0.0f,s*(s-a)*(s-b)*(s-c))); //inner part must be constrained above 0 because a triangle where all 3 points could be on a line. float rounding could push this under 0.
+    return 2.*area/b;
 }
