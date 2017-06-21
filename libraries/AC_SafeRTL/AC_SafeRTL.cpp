@@ -31,15 +31,18 @@ Path::Path()
 }
 
 /**
-*   Simplifies a 3D path, according to the Ramer-Douglas-Peucker algorithm.
-*   Returns the number of items which were removed. TODO verify that this is producing correct output.
+*    Simplifies a 3D path, according to the Ramer-Douglas-Peucker algorithm.
+*    Returns the number of items which were removed. end_index is the index of the last element in the path.
+*
+*    This function has been tested. It produces the correct output.
 */
-int Path::_rdp(uint8_t start_index, uint8_t end_index, float epsilon)
+int Path::_rdp(uint8_t end_index, float epsilon)
 {
-    start_finish sf = {start_index, end_index};
+    uint8_t start_index;
+    uint8_t end_of_array = end_index;
+    start_finish sf = {0, end_index};
     stack->push(sf);
-    int global_start = start_index;
-    // The bitmask which represents which points to keep (1) and which to delete(0)
+    // The bitmask which represents which points to keep (1) and which to delete (0)
     auto bitmask = std::bitset<MAX_PATH_LEN>().set(); //initialized to 1
     while (!stack->empty()) {
         start_finish tmp = stack->pop();
@@ -49,7 +52,7 @@ int Path::_rdp(uint8_t start_index, uint8_t end_index, float epsilon)
         float max_dist = 0.0f;
         uint8_t index = start_index;
         for (int i = index + 1; i < end_index; i++) {
-            if (bitmask[i-global_start]) {
+            if (bitmask[i]) {
                 float dist = _point_line_dist(path[i], path[start_index], path[end_index]);
                 if (dist > max_dist) {
                     index = i;
@@ -63,17 +66,17 @@ int Path::_rdp(uint8_t start_index, uint8_t end_index, float epsilon)
             stack->push(start_finish{index, end_index});
         }
         else {
-            for (int i = start_index + 1; i < end_index; ++i) {
-                bitmask[i-global_start] = false;
+            for (int i = start_index + 1; i < end_index; i++) {
+                bitmask[i] = false;
             }
         }
     }
     // in-place removal of objects from the array based on the bitset object.
-    int i = start_index;
-    int j = i;
+    int i = 0;
+    int j = 0;
 
     int removed = 0; // counts number of items removed from list
-    while (++i < end_index){
+    while (++i <= end_of_array){
         if (bitmask[i]){ //keep this item
             path[++j] = path[i];
         } else {
@@ -143,7 +146,7 @@ bool Path::_cleanup() {
         }
     }
     simplification_step:
-    _rdp(0, last_index, RDP_EPSILON);
+    _rdp(last_index, RDP_EPSILON);
 
     return pruning_occured;
 }

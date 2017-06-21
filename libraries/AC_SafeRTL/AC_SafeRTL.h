@@ -48,7 +48,7 @@ public:
     void append_if_far_enough(Vector3f);
     void routine_cleanup();
     void thorough_cleanup();
-    int _rdp(uint8_t, uint8_t, float); // FIXME move this back to private. It's here now for easy benchmarking
+    int _rdp(uint8_t, float); // FIXME move this back to private. It's here now for easy benchmarking
 private:
     bool _cleanup();
     static dist_point _segment_segment_dist(Vector3f, Vector3f, Vector3f, Vector3f);
