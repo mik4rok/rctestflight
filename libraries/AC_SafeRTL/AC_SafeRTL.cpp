@@ -182,9 +182,9 @@ dist_point Path::_segment_segment_dist(Vector3f p1, Vector3f p2, Vector3f p3, Ve
         t2 = constrain_float(t2, 0.0f, 1.0f);
 
         // difference between two closest points
-        Vector3f dP = w+t1*u-t2*v;
+        Vector3f dP = w+u*t1-v*t2;
 
-        halfway_point = (p1+t1*u + p3+t2*v)/2.;
+        Vector3f halfway_point = (p1+u*t1 + p3+v*t2)/2.0f;
         return {dP.length(), halfway_point};
     }
 }
@@ -201,6 +201,11 @@ float Path::_point_line_dist(Vector3f point, Vector3f line1, Vector3f line2) {
     // semiperimeter of triangle
     float s = (a+b+c)/2.0f;
 
-    area = sqrt(max(0.0f,s*(s-a)*(s-b)*(s-c))); //inner part must be constrained above 0 because a triangle where all 3 points could be on a line. float rounding could push this under 0.
-    return 2.*area/b;
+    float area_squared = s*(s-a)*(s-b)*(s-c);
+    // must be constrained above 0 because a triangle where all 3 points could be on a line. float rounding could push this under 0.
+    if (area_squared < 0.0f){
+        area_squared = 0.0f;
+    }
+    float area = sqrt(area_squared);
+    return 2.0f*area/b;
 }
