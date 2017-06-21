@@ -40,17 +40,17 @@ typedef struct dist_point {
 
 class Path {
     // points are stored in meters from EKF origin in NED
-    Vector3f * path;
     int last_index, worst_length;
     RDP_Stack * stack;
 public:
+    Vector3f * path; // by leaving this public, we can inject data into here easily which helps to benchmark algorithm performance. FIXME move it back.
     Path();
     void append_if_far_enough(Vector3f);
     void routine_cleanup();
     void thorough_cleanup();
+    int _rdp(uint8_t, uint8_t, float); // FIXME move this back to private. It's here now for easy benchmarking
 private:
     bool _cleanup();
-    int _rdp(uint8_t, uint8_t, float);
     static dist_point _segment_segment_dist(Vector3f, Vector3f, Vector3f, Vector3f);
     static float _point_line_dist(Vector3f, Vector3f, Vector3f);
 };
