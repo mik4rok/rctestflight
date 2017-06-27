@@ -48,22 +48,27 @@ bool RDP_Stack::empty()
 
 // TODO deal with issues that might arise from multithreading
 Path::Path() :
-    last_index(0),
+    _last_index(0),
+    _simplification_complete(False),
+    _pruning_complete(False),
+    _pruning_current_i(0),
+    _pruning_max_j(0)
 {
+    _simplification_bitmask = std::bitset<MAX_PATH_LEN>().set(); //initialize to 1111...
     path = new Vector3f[MAX_PATH_LEN];
-    stack = new RDP_Stack();
+    _simplification_stack = new RDP_Stack();
 }
 
 void Path::append_if_far_enough(Vector3f p) {
-    if (HYPOT(p, path[last_index]) > POSITION_DELTA) {
-        path[last_index++] = p;
+    if (HYPOT(p, path[_last_index]) > POSITION_DELTA) {
+        path[_last_index++] = p;
     }
 }
 
 void Path::routine_cleanup() {
     // We only do a routine cleanup if the memory is almost full. Cleanup deletes
     // points which are potentially useful, so it would be bad to clean up if we don't have to
-    if (last_index < MAX_PATH_LEN - 10) {
+    if (_last_index < MAX_PATH_LEN - 10) {
         return;
     }
 
@@ -115,18 +120,16 @@ int Path::_rdp(uint8_t end_index, float epsilon)
     uint8_t start_index;
     uint8_t end_of_array = end_index;
     start_finish sf = {0, end_index};
-    stack->push(sf);
-    // The bitmask which represents which points to keep (1) and which to delete (0)
-    auto bitmask = std::bitset<MAX_PATH_LEN>().set(); //initialized to 1
-    while (!stack->empty()) {
-        start_finish tmp = stack->pop();
+    _simplification_stack->push(sf);
+    while (!_simplification_stack->empty()) {
+        start_finish tmp = _simplification_stack->pop();
         start_index = tmp.start;
         end_index = tmp.finish;
 
         float max_dist = 0.0f;
         uint8_t index = start_index;
         for (int i = index + 1; i < end_index; i++) {
-            if (bitmask[i]) {
+            if (_simplification_bitmask[i]) {
                 float dist = _point_line_dist(path[i], path[start_index], path[end_index]);
                 if (dist > max_dist) {
                     index = i;
@@ -136,30 +139,16 @@ int Path::_rdp(uint8_t end_index, float epsilon)
         }
 
         if (max_dist > epsilon) {
-            stack->push(start_finish{start_index, index});
-            stack->push(start_finish{index, end_index});
+            _simplification_stack->push(start_finish{start_index, index});
+            _simplification_stack->push(start_finish{index, end_index});
         }
         else {
             for (int i = start_index + 1; i < end_index; i++) {
-                bitmask[i] = false;
+                _simplification_bitmask[i] = false;
             }
         }
     }
     return 0;
-    // TODO extract this to a new function:
-    // in-place removal of objects from the array based on the bitset object.
-    int i = 0;
-    int j = 0;
-
-    int removed = 0; // counts number of items removed from list
-    while (++i <= end_of_array){
-        if (bitmask[i]){ //keep this item
-            path[++j] = path[i];
-        } else {
-            removed++;
-        }
-    }
-    return removed;
 }
 
 // TODO make this an anytime algorithm. Make is accept a time to run before pausing.
@@ -167,8 +156,8 @@ int Path::_rdp(uint8_t end_index, float epsilon)
 bool Path::_detect_loops() {
     // pruning step
     bool pruning_occured = FALSE;
-    for (int i = 0; i <= last_index; i++) {
-        for (int j = last_index - 1; j > i + 1; j--) {
+    for (int i = 0; i <= _last_index; i++) {
+        for (int j = _last_index - 1; j > i + 1; j--) {
             dist_point dp = _segment_segment_dist(path[i], path[i+1], path[j], path[j+1]);
             if (dp.distance <= PRUNING_DELTA) {
                 // TODO return a struct (to-be-defined)
@@ -179,10 +168,30 @@ bool Path::_detect_loops() {
 }
 
 /**
-* Removes all (0,0,0) points from the path, and shifts remaining items to correct position. Also updates *top
+* Removes all (0,0,0) points from the path, and shifts remaining items to correct position.
 */
-int Path::_remove_empty_points() { // TODO
-    return 0;
+int Path::_remove_empty_points() {
+    int i = 0;
+    int j = 0;
+    int removed = 0;
+    while (++i < _last_index) { // never removes the first item. This should obviously be {0,0,0}
+        // if (path[i] == Vector3f(0.0f, 0.0f, 0.0f)) { // does this comparison work?
+        if (path[i] == NULL){
+            path[++j] = path[i]
+        } else {
+            removed++;
+        }
+    }
+    _last_index -= removed;
+}
+
+void Path::_zero_points_by_bitmask() {
+    for (int i = 0; i < end_of_array; i++){
+        if (bitmask[i]) {
+            // path[i] = Vector3f(0.0f, 0.0f, 0.0f);
+            path[i] = NULL;
+        }
+    }
 }
 
 /**
