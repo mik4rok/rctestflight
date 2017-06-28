@@ -26,9 +26,9 @@
 */
 
 // TODO deal with issues that might arise from multithreading
-// TODO there should be some way for the somebody to signal "we are waiting for cleanup to complete, do not accept new points"
 Path::Path() :
-    __last_index(0),
+    accepting_new_points(true),
+    _last_index(0),
     _simplification_complete(False),
     _pruning_complete(False),
     _pruning_current_i(0),
@@ -38,6 +38,9 @@ Path::Path() :
 }
 
 void Path::append_if_far_enough(Vector3f p) {
+    if (!accepting_new_points){
+        return;
+    }
     if (HYPOT(p, path[__last_index]) > POSITION_DELTA) {
         path[__last_index++] = p;
         // if cleanup algorithms are finished (And therefore not runnning), reset them
@@ -139,8 +142,16 @@ Vector3f* Path::thorough_cleanup() {
 
     _remove_empty_points();
 
-    // TODO reset state of cleanup? what if user leaves safertl mode, keeps flying, and then re-enters safertl somewhere else?
-    // maybe see above todo about "not accepting new points" mode.
+    // end by resetting the state of the cleanup methods.
+    _simplification_complete = false;
+    _simplification_stack.clear();
+    _simplification_bitmask.set();
+
+    _pruning_complete = false;
+    _pruning_current_i = 0;
+    _pruning_min_j = 0;
+    _prunable_loops.clear();
+
     return &path;
 }
 

@@ -30,6 +30,7 @@ public:
     void append_if_far_enough(Vector3f);
     void routine_cleanup();
     Vector3f* thorough_cleanup();
+    bool accepting_new_points; // false means that any call to append_if_far_enough() will fail. This should be unset when entering SafeRTL mode, and set when exiting.
 private:
     // the two cleanup steps. These should be run regularly, maybe even by a different thread
     void _rdp(uint32_t);
