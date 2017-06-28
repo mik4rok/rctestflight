@@ -31,8 +31,13 @@ public:
     void routine_cleanup();
     Vector3f* thorough_cleanup();
 private:
-    int _rdp(uint8_t, float);
-    bool _detect_loops();
+    // the two cleanup steps. These should be run regularly, maybe even by a different thread
+    void _rdp(uint32_t);
+    void _detect_loops(uint32_t);
+    // misc cleanup helper methods:
+    void _zero_points_by_simplification_bitmask();
+    void _zero_points_by_loops();
+    void _remove_empty_points();
     // _segment_segment_dist returns two things, the closest distance reached between 2 line segments, and the point exactly between them.
     typedef struct dist_point {
         float distance;
@@ -56,7 +61,6 @@ private:
     bool _pruning_complete;
     int _pruning_current_i;
     int _pruning_min_j;
-
     typedef struct loop {
         uint8_t start_index;
         uint8_t end_index;
