@@ -24,11 +24,11 @@ const AP_HAL::HAL& hal = AP_HAL::get_HAL();
 class Path {
     // points are stored in meters from EKF origin in NED
     Vector3f path[MAX_PATH_LEN];
-    int _last_index;
+    uint8_t _last_index;
 public:
     Path();
     void append_if_far_enough(Vector3f);
-    void routine_cleanup();
+    bool routine_cleanup();
     Vector3f* thorough_cleanup();
     bool accepting_new_points; // false means that any call to append_if_far_enough() will fail. This should be unset when entering SafeRTL mode, and set when exiting.
 private:
@@ -37,32 +37,33 @@ private:
     void _detect_loops(uint32_t);
     // misc cleanup helper methods:
     void _zero_points_by_simplification_bitmask();
-    void _zero_points_by_loops();
+    void _zero_points_by_loops(uint8_t);
     void _remove_empty_points();
     // _segment_segment_dist returns two things, the closest distance reached between 2 line segments, and the point exactly between them.
-    typedef struct dist_point {
+    typedef struct {
         float distance;
         Vector3f point;
     } dist_point;
-    static dist_point _segment_segment_dist(Vector3f, Vector3f, Vector3f, Vector3f);
-    static float _point_line_dist(Vector3f, Vector3f, Vector3f);
+    // typedef struct dist_point dist_point;
+    static dist_point _segment_segment_dist(const Vector3f&, const Vector3f&, const Vector3f&, const Vector3f&);
+    static float _point_line_dist(const Vector3f&, const Vector3f&, const Vector3f&);
 
     // Simplification state
     bool _simplification_complete;
     // structure and buffer to hold the "to-do list" for the RDP algorithm.
-    struct start_finish {
+    typedef struct {
         uint8_t start;
         uint8_t finish;
-    };
+    } start_finish;
     AP_Buffer<start_finish,RDP_STACK_LEN> _simplification_stack;
     // the result of the simplification algorithm
-    std::bitset<MAX_PATH_LEN>() _simplification_bitmask;
+    std::bitset<MAX_PATH_LEN> _simplification_bitmask;
 
     // Pruning state
     bool _pruning_complete;
-    int _pruning_current_i;
-    int _pruning_min_j;
-    typedef struct loop {
+    uint8_t _pruning_current_i;
+    uint8_t _pruning_min_j;
+    typedef struct {
         uint8_t start_index;
         uint8_t end_index;
         Vector3f halfway_point;

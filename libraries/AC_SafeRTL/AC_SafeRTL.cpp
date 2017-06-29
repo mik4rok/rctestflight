@@ -29,8 +29,8 @@
 Path::Path() :
     accepting_new_points(true),
     _last_index(0),
-    _simplification_complete(False),
-    _pruning_complete(False),
+    _simplification_complete(false),
+    _pruning_complete(false),
     _pruning_current_i(0),
     _pruning_min_j(0)
 {
@@ -41,13 +41,13 @@ void Path::append_if_far_enough(Vector3f p) {
     if (!accepting_new_points){
         return;
     }
-    if (HYPOT(p, path[__last_index]) > POSITION_DELTA) {
-        path[__last_index++] = p;
+    if (HYPOT(p, path[_last_index]) > POSITION_DELTA) {
+        path[_last_index++] = p;
         // if cleanup algorithms are finished (And therefore not runnning), reset them
         if (_pruning_complete) {
             _pruning_complete = false;
             _pruning_current_i = 0;
-            _pruning_max_j = 0;
+            _pruning_min_j = 0;
         }
         if (_simplification_complete) {
             _simplification_complete = false;
@@ -65,7 +65,7 @@ void Path::append_if_far_enough(Vector3f p) {
 bool Path::routine_cleanup() {
     // We only do a routine cleanup if the memory is almost full. Cleanup deletes
     // points which are potentially useful, so it would be bad to clean up if we don't have to
-    if (__last_index < MAX_PATH_LEN - 10) {
+    if (_last_index < MAX_PATH_LEN - 10) {
         return true;
     }
 
@@ -138,7 +138,7 @@ Vector3f* Path::thorough_cleanup() {
     _zero_points_by_simplification_bitmask();
 
     // apply pruning
-    _zero_points_by_loops();
+    _zero_points_by_loops(MAX_PATH_LEN); // prune every single loop
 
     _remove_empty_points();
 
@@ -152,7 +152,7 @@ Vector3f* Path::thorough_cleanup() {
     _pruning_min_j = 0;
     _prunable_loops.clear();
 
-    return &path;
+    return path;
 }
 
 //
@@ -177,7 +177,8 @@ void Path::_rdp(uint32_t allowed_microseconds) {
             return;
         }
 
-        start_finish tmp = _simplification_stack.pop_front();
+        start_finish tmp {}; // initialize to zero to suppress warnings
+        _simplification_stack.pop_front(tmp);
         start_index = tmp.start;
         end_index = tmp.finish;
 
@@ -223,15 +224,16 @@ void Path::_detect_loops(uint32_t allowed_microseconds) {
             return;
         }
 
-        int j = _pruning_current_i + 2;
+        uint8_t j = _pruning_current_i + 2;
         if (_pruning_min_j > j){
             j = _pruning_min_j;
         }
         while (j < _last_index){
-            dist_point dp = _segment_segment_dist(path[i], path[i+1], path[j], path[j+1]);
+            dist_point dp = _segment_segment_dist(path[_pruning_current_i], path[_pruning_current_i+1], path[j], path[j+1]);
             if (dp.distance <= PRUNING_DELTA) {
                 _pruning_min_j = j;
-                _prunable_loops.push_back({i+1,j+1,dp.point});
+                // int promotion rules prevent me from using i+1 and j+1
+                _prunable_loops.push_back({(++_pruning_current_i)--,(++j)--,dp.point});
             }
             j++;
         }
@@ -241,22 +243,28 @@ void Path::_detect_loops(uint32_t allowed_microseconds) {
 }
 
 void Path::_zero_points_by_simplification_bitmask() {
-    for (int i = 0; i < end_of_array; i++){
+    for (int i = 0; i <= _last_index; i++){
         if (_simplification_bitmask[i]) {
-            // path[i] = Vector3f(0.0f, 0.0f, 0.0f);
-            path[i] = NULL;
+            path[i] = Vector3f(0.0f, 0.0f, 0.0f);
         }
     }
 }
 
-void Path::_zero_points_by_loops() {
-    for (loop l : _prunable_loops){
-        for (int i = l.start_index; i < l.end_index; i++){
-            path[i] = NULL;
+/**
+*   Only prunes loops until points_to_delete points have been removed. It does not necessarily prune all loops.
+*/
+void Path::_zero_points_by_loops(uint8_t points_to_delete) {
+    int removed_points = 0;
+    for(int i = 0; i < _prunable_loops.size(); i++){
+        loop l = _prunable_loops[i];
+        for(int j = l.start_index; j < l.end_index; j++){
+            path[j] = Vector3f(0.0f, 0.0f, 0.0f);
         }
-    }
-    for (loop l : _prunable_loops){
         path[int((l.start_index+l.end_index)/2.0)] = l.halfway_point;
+        removed_points += l.end_index - l.start_index - 1;
+        if(removed_points > points_to_delete){
+            return;
+        }
     }
 }
 
@@ -267,15 +275,14 @@ void Path::_remove_empty_points() {
     int i = 0;
     int j = 0;
     int removed = 0;
-    while (++i < __last_index) { // never removes the first item. This should obviously be {0,0,0}
-        // if (path[i] == Vector3f(0.0f, 0.0f, 0.0f)) { // does this comparison work?
-        if (path[i] == NULL){
-            path[++j] = path[i]
+    while (++i < _last_index) { // never removes the first item. This should obviously be {0,0,0}
+        if (path[i] == Vector3f(0.0f, 0.0f, 0.0f)){
+            path[++j] = path[i];
         } else {
             removed++;
         }
     }
-    __last_index -= removed;
+    _last_index -= removed;
 }
 
 /**
@@ -285,7 +292,8 @@ void Path::_remove_empty_points() {
 *  Limitation: This function does not work for parallel lines. In this case, it will return FLT_MAX. This does not matter for the path cleanup algorithm because
 *  the pruning will still occur fine between the first parallel segment and a segment which is directly before or after the second segment.
 */
-dist_point Path::_segment_segment_dist(const Vector3f& p1, const Vector3f& p2, const Vector3f& p3, const Vector3f& p4) {
+// typedef struct dist_point dist_point;
+Path::dist_point Path::_segment_segment_dist(const Vector3f &p1, const Vector3f &p2, const Vector3f &p3, const Vector3f &p4) {
     Vector3f u = p2-p1;
     Vector3f v = p4-p3;
     Vector3f w = p1-p3;
@@ -322,7 +330,7 @@ dist_point Path::_segment_segment_dist(const Vector3f& p1, const Vector3f& p2, c
 /**
 *  Returns the closest distance from a point to a 3D line. The line is defined by any 2 points
 */
-float Path::_point_line_dist(const Vector3f& point, const Vector3f& line1, const Vector3f& line2) {
+float Path::_point_line_dist(const Vector3f &point, const Vector3f &line1, const Vector3f &line2) {
     // triangle side lengths
     float a = HYPOT(point, line1);
     float b = HYPOT(line1, line2);
