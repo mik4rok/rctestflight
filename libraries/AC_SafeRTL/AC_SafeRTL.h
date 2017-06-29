@@ -17,9 +17,8 @@
 // XXX A number too small for RDP_STACK_LEN can cause a buffer overflow! The number to put here is int((s/2-1)+min(s/2, MAX_PATH_LEN-s)), where s = pow(2, floor(log(MAX_PATH_LEN)/log(2)))
 // To avoid this annoying math, a good-enough overestimate is ciel(MAX_PATH_LEN*2./3.)
 
+// FIXME are inline methods preferred?
 #define HYPOT(a,b) (a-b).length()
-
-const AP_HAL::HAL& hal = AP_HAL::get_HAL();
 
 class Path {
     // points are stored in meters from EKF origin in NED
@@ -30,11 +29,13 @@ public:
     void append_if_far_enough(Vector3f);
     bool routine_cleanup();
     Vector3f* thorough_cleanup();
+    Vector3f get(int);
+    // the two cleanup steps. These should be run regularly, maybe even by a different thread
+    void rdp(uint32_t);
+    void detect_loops(uint32_t);
+    bool cleanup_ready();
     bool accepting_new_points; // false means that any call to append_if_far_enough() will fail. This should be unset when entering SafeRTL mode, and set when exiting.
 private:
-    // the two cleanup steps. These should be run regularly, maybe even by a different thread
-    void _rdp(uint32_t);
-    void _detect_loops(uint32_t);
     // misc cleanup helper methods:
     void _zero_points_by_simplification_bitmask();
     void _zero_points_by_loops(uint8_t);

@@ -35,6 +35,7 @@ Path::Path() :
     _pruning_min_j(0)
 {
     _simplification_bitmask = std::bitset<MAX_PATH_LEN>().set(); //initialize to 1111...
+    path[_last_index] = {0.0f, 0.0f, 0.0f};
 }
 
 void Path::append_if_far_enough(Vector3f p)
@@ -43,8 +44,10 @@ void Path::append_if_far_enough(Vector3f p)
         return;
     }
     if (HYPOT(p, path[_last_index]) > POSITION_DELTA) {
-        path[_last_index++] = p;
+        path[++_last_index] = p;
         // if cleanup algorithms are finished (And therefore not runnning), reset them
+
+        // TODO refactor these out. also in the cleanups.
         if (_pruning_complete) {
             _pruning_complete = false;
             _pruning_current_i = 0;
@@ -158,15 +161,20 @@ Vector3f* Path::thorough_cleanup()
     return path;
 }
 
-//
-// Private methods
-//
+Vector3f Path::get(int index)
+{
+    return path[index];
+}
+
+bool Path::cleanup_ready(){
+    return _pruning_complete && _simplification_complete;
+}
 
 /**
 *    Simplifies a 3D path, according to the Ramer-Douglas-Peucker algorithm.
 *    Returns the number of items which were removed. end_index is the index of the last element in the path.
 */
-void Path::_rdp(uint32_t allowed_microseconds)
+void Path::rdp(uint32_t allowed_microseconds)
 {
     if (_simplification_complete) {
         return;
@@ -218,7 +226,7 @@ void Path::_rdp(uint32_t allowed_microseconds)
 *
 *   Note that this method might take a bit longer than allowed_microseconds. It only stops after it's already run longer than allowed_microseconds.
 */
-void Path::_detect_loops(uint32_t allowed_microseconds)
+void Path::detect_loops(uint32_t allowed_microseconds)
 {
     if (_pruning_complete) {
         return;
@@ -247,6 +255,10 @@ void Path::_detect_loops(uint32_t allowed_microseconds)
     }
     _pruning_complete = true;
 }
+
+//
+// Private methods
+//
 
 void Path::_zero_points_by_simplification_bitmask()
 {
