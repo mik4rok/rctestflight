@@ -37,8 +37,9 @@ Path::Path() :
     _simplification_bitmask = std::bitset<MAX_PATH_LEN>().set(); //initialize to 1111...
 }
 
-void Path::append_if_far_enough(Vector3f p) {
-    if (!accepting_new_points){
+void Path::append_if_far_enough(Vector3f p)
+{
+    if (!accepting_new_points) {
         return;
     }
     if (HYPOT(p, path[_last_index]) > POSITION_DELTA) {
@@ -62,7 +63,8 @@ void Path::append_if_far_enough(Vector3f p) {
 *   Otherwise, it will run a cleanup, based on info computed by the background methods, _rdp() and _detect_loops().
 *   If no cleanup is possible, this method returns false. This should be treated as an error condition.
 */
-bool Path::routine_cleanup() {
+bool Path::routine_cleanup()
+{
     // We only do a routine cleanup if the memory is almost full. Cleanup deletes
     // points which are potentially useful, so it would be bad to clean up if we don't have to
     if (_last_index < MAX_PATH_LEN - 10) {
@@ -74,7 +76,7 @@ bool Path::routine_cleanup() {
     int potential_amount_to_simplify = _simplification_bitmask.size() - _simplification_bitmask.count();
 
     // if simplifying will remove more than 10 points, just do it (tm)
-    if (potential_amount_to_simplify > 10){
+    if (potential_amount_to_simplify > 10) {
         _zero_points_by_simplification_bitmask();
         _remove_empty_points();
         success = true;
@@ -82,11 +84,11 @@ bool Path::routine_cleanup() {
 
     // otherwise we'll see how much we could clean up by pruning loops
     int potential_amount_to_prune = 0;
-    for (int i = 0; i < _prunable_loops.size() - 1; i++){
+    for (int i = 0; i < _prunable_loops.size() - 1; i++) {
         // consider that loops can overlap
         // This works because input loops are sorted chronologically (by start_index) and no loops are contained within other loops
         int end = _prunable_loops[i].end_index;
-        if (_prunable_loops[i+1].start_index < end){
+        if (_prunable_loops[i+1].start_index < end) {
             end = _prunable_loops[i+1].start_index;
         }
         potential_amount_to_prune += end - _prunable_loops[i].start_index;
@@ -97,14 +99,14 @@ bool Path::routine_cleanup() {
     potential_amount_to_prune -= _prunable_loops.size();
 
     // if pruning could remove more than 10 points, prune loops until 10 or more points have been removed (doesn't necessarily prune all loops)
-    if (potential_amount_to_prune > 10){
+    if (potential_amount_to_prune > 10) {
         _zero_points_by_loops(10);
         _remove_empty_points();
         success = true;
     }
 
     // as a last resort, see if pruning and simplifying would remove 5+ points.
-    if (potential_amount_to_prune + potential_amount_to_simplify){
+    if (potential_amount_to_prune + potential_amount_to_simplify) {
         _zero_points_by_simplification_bitmask();
         _zero_points_by_loops(10);
         _remove_empty_points();
@@ -129,8 +131,9 @@ bool Path::routine_cleanup() {
 *  pointer to the cleaned-up path. Returns nullptr if the cleanup algorithms aren't ready yet.
 *  If this happens, just run this method again a bit later.
 */
-Vector3f* Path::thorough_cleanup() {
-    if(!(_simplification_complete && _pruning_complete)){
+Vector3f* Path::thorough_cleanup()
+{
+    if (!(_simplification_complete && _pruning_complete)) {
         return nullptr; // fail if the required cleanup data is not available
     }
 
@@ -163,10 +166,12 @@ Vector3f* Path::thorough_cleanup() {
 *    Simplifies a 3D path, according to the Ramer-Douglas-Peucker algorithm.
 *    Returns the number of items which were removed. end_index is the index of the last element in the path.
 */
-void Path::_rdp(uint32_t allowed_microseconds) {
-    if (_simplification_complete){
+void Path::_rdp(uint32_t allowed_microseconds)
+{
+    if (_simplification_complete) {
         return;
-    } else if (_simplification_stack.is_empty()){ // if not complete but also nothing to do, we must be restarting.
+    }
+    else if (_simplification_stack.is_empty()) {  // if not complete but also nothing to do, we must be restarting.
         // reset to beginning state
         _simplification_stack.push_back(start_finish {0, _last_index});
     }
@@ -213,22 +218,23 @@ void Path::_rdp(uint32_t allowed_microseconds) {
 *
 *   Note that this method might take a bit longer than allowed_microseconds. It only stops after it's already run longer than allowed_microseconds.
 */
-void Path::_detect_loops(uint32_t allowed_microseconds) {
-    if (_pruning_complete){
+void Path::_detect_loops(uint32_t allowed_microseconds)
+{
+    if (_pruning_complete) {
         return;
     }
     uint32_t start_time = AP_HAL::micros();
 
-    while (_pruning_current_i < _last_index - 1){
+    while (_pruning_current_i < _last_index - 1) {
         if (AP_HAL::micros() - start_time > allowed_microseconds) {
             return;
         }
 
         uint8_t j = _pruning_current_i + 2;
-        if (_pruning_min_j > j){
+        if (_pruning_min_j > j) {
             j = _pruning_min_j;
         }
-        while (j < _last_index){
+        while (j < _last_index) {
             dist_point dp = _segment_segment_dist(path[_pruning_current_i], path[_pruning_current_i+1], path[j], path[j+1]);
             if (dp.distance <= PRUNING_DELTA) {
                 _pruning_min_j = j;
@@ -242,8 +248,9 @@ void Path::_detect_loops(uint32_t allowed_microseconds) {
     _pruning_complete = true;
 }
 
-void Path::_zero_points_by_simplification_bitmask() {
-    for (int i = 0; i <= _last_index; i++){
+void Path::_zero_points_by_simplification_bitmask()
+{
+    for (int i = 0; i <= _last_index; i++) {
         if (_simplification_bitmask[i]) {
             path[i] = Vector3f(0.0f, 0.0f, 0.0f);
         }
@@ -253,16 +260,17 @@ void Path::_zero_points_by_simplification_bitmask() {
 /**
 *   Only prunes loops until points_to_delete points have been removed. It does not necessarily prune all loops.
 */
-void Path::_zero_points_by_loops(uint8_t points_to_delete) {
+void Path::_zero_points_by_loops(uint8_t points_to_delete)
+{
     int removed_points = 0;
-    for(int i = 0; i < _prunable_loops.size(); i++){
+    for (int i = 0; i < _prunable_loops.size(); i++) {
         loop l = _prunable_loops[i];
-        for(int j = l.start_index; j < l.end_index; j++){
+        for (int j = l.start_index; j < l.end_index; j++) {
             path[j] = Vector3f(0.0f, 0.0f, 0.0f);
         }
         path[int((l.start_index+l.end_index)/2.0)] = l.halfway_point;
         removed_points += l.end_index - l.start_index - 1;
-        if(removed_points > points_to_delete){
+        if (removed_points > points_to_delete) {
             return;
         }
     }
@@ -271,14 +279,16 @@ void Path::_zero_points_by_loops(uint8_t points_to_delete) {
 /**
 * Removes all NULL points from the path, and shifts remaining items to correct position.
 */
-void Path::_remove_empty_points() {
+void Path::_remove_empty_points()
+{
     int i = 0;
     int j = 0;
     int removed = 0;
     while (++i < _last_index) { // never removes the first item. This should obviously be {0,0,0}
-        if (path[i] == Vector3f(0.0f, 0.0f, 0.0f)){
+        if (path[i] == Vector3f(0.0f, 0.0f, 0.0f)) {
             path[++j] = path[i];
-        } else {
+        }
+        else {
             removed++;
         }
     }
@@ -293,7 +303,8 @@ void Path::_remove_empty_points() {
 *  the pruning will still occur fine between the first parallel segment and a segment which is directly before or after the second segment.
 */
 // typedef struct dist_point dist_point;
-Path::dist_point Path::_segment_segment_dist(const Vector3f &p1, const Vector3f &p2, const Vector3f &p3, const Vector3f &p4) {
+Path::dist_point Path::_segment_segment_dist(const Vector3f &p1, const Vector3f &p2, const Vector3f &p3, const Vector3f &p4)
+{
     Vector3f u = p2-p1;
     Vector3f v = p4-p3;
     Vector3f w = p1-p3;
@@ -330,7 +341,8 @@ Path::dist_point Path::_segment_segment_dist(const Vector3f &p1, const Vector3f 
 /**
 *  Returns the closest distance from a point to a 3D line. The line is defined by any 2 points
 */
-float Path::_point_line_dist(const Vector3f &point, const Vector3f &line1, const Vector3f &line2) {
+float Path::_point_line_dist(const Vector3f &point, const Vector3f &line1, const Vector3f &line2)
+{
     // triangle side lengths
     float a = HYPOT(point, line1);
     float b = HYPOT(line1, line2);
@@ -341,7 +353,7 @@ float Path::_point_line_dist(const Vector3f &point, const Vector3f &line1, const
 
     float area_squared = s*(s-a)*(s-b)*(s-c);
     // must be constrained above 0 because a triangle where all 3 points could be on a line. float rounding could push this under 0.
-    if (area_squared < 0.0f){
+    if (area_squared < 0.0f) {
         area_squared = 0.0f;
     }
     float area = sqrt(area_squared);
