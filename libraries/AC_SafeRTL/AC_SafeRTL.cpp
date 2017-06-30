@@ -47,16 +47,11 @@ void Path::append_if_far_enough(Vector3f p)
         path[++_last_index] = p;
         // if cleanup algorithms are finished (And therefore not runnning), reset them
 
-        // TODO refactor these out. also in the cleanups.
-        if (_pruning_complete) {
-            _pruning_complete = false;
-            _pruning_current_i = 0;
-            _pruning_min_j = 0;
-        }
         if (_simplification_complete) {
-            _simplification_complete = false;
-            _simplification_bitmask.set();
-            _simplification_stack.clear();
+            _reset_rdp();
+        }
+        if (_pruning_complete) {
+            _reset_pruning();
         }
     }
 }
@@ -117,14 +112,8 @@ bool Path::routine_cleanup()
     }
 
     // end by resetting the state of the cleanup methods.
-    _simplification_complete = false;
-    _simplification_stack.clear();
-    _simplification_bitmask.set();
-
-    _pruning_complete = false;
-    _pruning_current_i = 0;
-    _pruning_min_j = 0;
-    _prunable_loops.clear();
+    _reset_rdp();
+    _reset_pruning();
 
     return success;
 }
@@ -133,13 +122,11 @@ bool Path::routine_cleanup()
 *  Run this method only when preparing to initiate the RTL procedure. Returns a
 *  pointer to the cleaned-up path. Returns nullptr if the cleanup algorithms aren't ready yet.
 *  If this happens, just run this method again a bit later.
+*
+*  Probably best not to run this unless cleanup_ready() is returning true
 */
 Vector3f* Path::thorough_cleanup()
 {
-    if (!(_simplification_complete && _pruning_complete)) {
-        return nullptr; // fail if the required cleanup data is not available
-    }
-
     // apply simplification
     _zero_points_by_simplification_bitmask();
 
@@ -149,14 +136,8 @@ Vector3f* Path::thorough_cleanup()
     _remove_empty_points();
 
     // end by resetting the state of the cleanup methods.
-    _simplification_complete = false;
-    _simplification_stack.clear();
-    _simplification_bitmask.set();
-
-    _pruning_complete = false;
-    _pruning_current_i = 0;
-    _pruning_min_j = 0;
-    _prunable_loops.clear();
+    _reset_rdp();
+    _reset_pruning();
 
     return path;
 }
@@ -256,14 +237,35 @@ void Path::detect_loops(uint32_t allowed_microseconds)
     _pruning_complete = true;
 }
 
+void Path::clear_path()
+{
+    _last_index = 0;
+    path[_last_index] = {0.0f, 0.0f, 0.0f};
+}
+
 //
 // Private methods
 //
 
+void Path::_reset_rdp()
+{
+    _simplification_complete = false;
+    _simplification_stack.clear();
+    _simplification_bitmask.set();
+}
+
+void Path::_reset_pruning()
+{
+    _pruning_complete = false;
+    _pruning_current_i = 0;
+    _pruning_min_j = 0;
+    _prunable_loops.clear();
+}
+
 void Path::_zero_points_by_simplification_bitmask()
 {
     for (int i = 0; i <= _last_index; i++) {
-        if (_simplification_bitmask[i]) {
+        if (!_simplification_bitmask[i]) {
             path[i] = Vector3f(0.0f, 0.0f, 0.0f);
         }
     }
@@ -289,15 +291,16 @@ void Path::_zero_points_by_loops(uint8_t points_to_delete)
 }
 
 /**
-* Removes all NULL points from the path, and shifts remaining items to correct position.
+*  Removes all NULL points from the path, and shifts remaining items to correct position.
+*  The first item will not be removed.
 */
 void Path::_remove_empty_points()
 {
     int i = 0;
     int j = 0;
     int removed = 0;
-    while (++i < _last_index) { // never removes the first item. This should obviously be {0,0,0}
-        if (path[i] == Vector3f(0.0f, 0.0f, 0.0f)) {
+    while (++i <= _last_index) { // never removes the first item. This should obviously be {0,0,0}
+        if (path[i] != Vector3f(0.0f, 0.0f, 0.0f)) {
             path[++j] = path[i];
         }
         else {

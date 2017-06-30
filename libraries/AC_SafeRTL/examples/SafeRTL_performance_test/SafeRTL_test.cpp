@@ -28,7 +28,7 @@ void loop()
     uint32_t reference_time, run_time;
     bool correct;
 
-    hal.console->printf("--------------------");
+    hal.console->printf("--------------------\n");
 
     // test append_if_far_enough()
     reset_path();
@@ -44,13 +44,15 @@ void loop()
     run_time = AP_HAL::micros() - reference_time;
     correct = check_path(test_path_after_simplifying);
     hal.console->printf("rdp: %s, %u usec\n", correct ? "success" : "fail", run_time);
-    // TODO reset cleanup algorithms
 
     // test detect_loops()
     reset_path();
     reference_time = AP_HAL::micros();
     for(int i = 0; i < 100; i++){
         p->detect_loops(300);
+    }
+    for(int i = 0; i < p->_prunable_loops.size(); i++){
+        //hal.console->printf("%u %u | %f %f \n", p->_prunable_loops[i].start_index, p->_prunable_loops[i].end_index,p->_prunable_loops[i].halfway_point[0],p->_prunable_loops[i].halfway_point[1]);
     }
     p->thorough_cleanup();
     run_time = AP_HAL::micros() - reference_time;
@@ -66,12 +68,13 @@ void loop()
     }
     p->thorough_cleanup();
     run_time = AP_HAL::micros() - reference_time;
-    correct = check_path(test_path_after_pruning);
+    correct = check_path(test_path_complete);
     hal.console->printf("both: %s, %u usec\n", correct ? "success" : "fail", run_time);
 }
 
 void reset_path()
 {
+    p->clear_path();
     for (Vector3f v : test_path_before){
         p->append_if_far_enough(v);
     }
@@ -80,7 +83,7 @@ void reset_path()
 bool check_path(const std::vector<Vector3f>& correct)
 {
     for (int i = 0; i < correct.size(); i++){
-        // hal.console->printf("%f %f %f | %f %f %f\n", p->get(i)[0], p->get(i)[1], p->get(i)[2], correct[i][0], correct[i][1], correct[i][2]);
+        //hal.console->printf("%f %f %f | %f %f %f\n", p->get(i)[0], p->get(i)[1], p->get(i)[2], correct[i][0], correct[i][1], correct[i][2]);
         if(p->get(i) != correct[i]){
             return false;
         }
@@ -89,3 +92,10 @@ bool check_path(const std::vector<Vector3f>& correct)
 }
 
 AP_HAL_MAIN();
+
+
+/*
+for(int i = 0; i < p->_simplification_bitmask.size(); i++){
+    hal.console->printf("%s\n", p->_simplification_bitmask[i] ? "true":"false");
+}
+*/
