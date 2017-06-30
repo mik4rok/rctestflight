@@ -45,8 +45,8 @@ void Path::append_if_far_enough(Vector3f p)
     }
     if (HYPOT(p, path[_last_index]) > POSITION_DELTA) {
         path[++_last_index] = p;
-        // if cleanup algorithms are finished (And therefore not runnning), reset them
 
+        // if cleanup algorithms are finished (And therefore not runnning), reset them
         if (_simplification_complete) {
             _reset_rdp();
         }

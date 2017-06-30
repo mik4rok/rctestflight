@@ -83,7 +83,7 @@ void reset_path()
 bool check_path(const std::vector<Vector3f>& correct)
 {
     for (int i = 0; i < correct.size(); i++){
-        //hal.console->printf("%f %f %f | %f %f %f\n", p->get(i)[0], p->get(i)[1], p->get(i)[2], correct[i][0], correct[i][1], correct[i][2]);
+        // hal.console->printf("%f %f %f | %f %f %f\n", p->get(i)[0], p->get(i)[1], p->get(i)[2], correct[i][0], correct[i][1], correct[i][2]);
         if(p->get(i) != correct[i]){
             return false;
         }
