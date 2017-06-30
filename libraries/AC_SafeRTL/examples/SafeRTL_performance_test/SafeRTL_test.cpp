@@ -12,7 +12,7 @@ bool check_path(const std::vector<Vector3f>&);
 void setup()
 {
     hal.console->printf("SafeRTL performance test\n");
-    AP_BoardConfig{}.init();
+    AP_BoardConfig{} .init();
 
     p = new Path();
 }
@@ -35,7 +35,7 @@ void loop()
 
     // test rdp()
     reference_time = AP_HAL::micros();
-    for(int i = 0; i < 100; i++){
+    for (int i = 0; i < 100; i++) {
         p->rdp(100);
     }
     run_time = AP_HAL::micros() - reference_time;
@@ -46,7 +46,7 @@ void loop()
     // test detect_loops()
     reset_path();
     reference_time = AP_HAL::micros();
-    for(int i = 0; i < 100; i++){
+    for (int i = 0; i < 100; i++) {
         p->detect_loops(300);
     }
     run_time = AP_HAL::micros() - reference_time;
@@ -57,7 +57,7 @@ void loop()
     // test both
     reset_path();
     reference_time = AP_HAL::micros();
-    while(!(p->cleanup_ready())){
+    while (!(p->cleanup_ready())) {
         p->rdp(200);
         p->detect_loops(300);
     }
@@ -70,15 +70,15 @@ void loop()
 void reset_path()
 {
     p->clear_path();
-    for (Vector3f v : test_path_before){
+    for (Vector3f v : test_path_before) {
         p->append_if_far_enough(v);
     }
 }
 
 bool check_path(const std::vector<Vector3f>& correct)
 {
-    for (int i = 0; i < correct.size(); i++){
-        if(!is_equal(p->get(i)[0],correct[i][0]) ||!is_equal(p->get(i)[1],correct[i][1])||!is_equal(p->get(i)[2],correct[i][2])){
+    for (int i = 0; i < correct.size(); i++) {
+        if (!is_equal(p->get(i)[0],correct[i][0]) ||!is_equal(p->get(i)[1],correct[i][1])||!is_equal(p->get(i)[2],correct[i][2])) {
             return false;
         }
     }

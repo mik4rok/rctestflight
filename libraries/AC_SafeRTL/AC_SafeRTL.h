@@ -36,7 +36,7 @@ public:
     bool cleanup_ready();
     void clear_path();
     bool accepting_new_points; // false means that any call to append_if_far_enough() will fail. This should be unset when entering SafeRTL mode, and set when exiting.
-//private:
+private:
     // misc cleanup helper methods:
     void _reset_rdp();
     void _reset_pruning();

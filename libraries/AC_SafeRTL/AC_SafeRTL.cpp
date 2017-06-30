@@ -147,7 +147,8 @@ Vector3f Path::get(int index)
     return path[index];
 }
 
-bool Path::cleanup_ready(){
+bool Path::cleanup_ready()
+{
     return _pruning_complete && _simplification_complete;
 }
 
