@@ -109,6 +109,10 @@ bool Copter::set_mode(control_mode_t mode, mode_reason_t reason)
             success = guided_nogps_init(ignore_checks);
             break;
 
+        case SAFE_RTL:
+            success = safe_rtl_init(ignore_checks);
+            break;
+
         default:
             success = false;
             break;
@@ -118,7 +122,7 @@ bool Copter::set_mode(control_mode_t mode, mode_reason_t reason)
     if (success) {
         // perform any cleanup required by previous flight mode
         exit_mode(control_mode, mode);
-        
+
         prev_control_mode = control_mode;
         prev_control_mode_reason = control_mode_reason;
 
@@ -134,11 +138,11 @@ bool Copter::set_mode(control_mode_t mode, mode_reason_t reason)
         // but it should be harmless to disable the fence temporarily in these situations as well
         fence.manual_recovery_start();
 #endif
-        
+
 #if FRSKY_TELEM_ENABLED == ENABLED
         frsky_telemetry.update_control_mode(control_mode);
 #endif
-        
+
     } else {
         // Log error that we failed to enter desired flight mode
         Log_Write_Error(ERROR_SUBSYSTEM_FLIGHT_MODE,mode);
@@ -244,6 +248,11 @@ void Copter::update_flight_mode()
 
         case GUIDED_NOGPS:
             guided_nogps_run();
+            break;
+
+
+        case SAFE_RTL:
+            safe_rtl_run();
             break;
 
         default:
@@ -485,9 +494,10 @@ void Copter::print_flight_mode(AP_HAL::BetterStream *port, uint8_t mode)
     case GUIDED_NOGPS:
         port->printf("GUIDED_NOGPS");
         break;
+    case SAFE_RTL:
+        port->printf("SAFE_RTL");
     default:
         port->printf("Mode(%u)", (unsigned)mode);
         break;
     }
 }
-

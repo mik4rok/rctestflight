@@ -312,7 +312,7 @@ private:
 
     // altitude below which we do no navigation in auto takeoff
     float auto_takeoff_no_nav_alt_cm;
-    
+
     RCMapper rcmap;
 
     // board specific config
@@ -457,7 +457,7 @@ private:
     uint32_t control_sensors_present;
     uint32_t control_sensors_enabled;
     uint32_t control_sensors_health;
-    
+
     // Altitude
     // The cm/s we are moving up or down based on filtered data - Positive = UP
     int16_t climb_rate;
@@ -557,8 +557,8 @@ private:
     AP_Rally_Copter rally;
 #endif
 
-    // RSSI 
-    AP_RSSI rssi;      
+    // RSSI
+    AP_RSSI rssi;
 
     // Crop Sprayer
 #if SPRAYER == ENABLED
@@ -641,7 +641,7 @@ private:
 
     // set when we are upgrading parameters from 3.4
     bool upgrading_frame_params;
-    
+
     static const AP_Scheduler::Task scheduler_tasks[];
     static const AP_Param::Info var_info[];
     static const struct LogStructure log_structure[];
@@ -943,6 +943,8 @@ private:
     void rtl_land_run();
     void rtl_build_path(bool terrain_following_allowed);
     void rtl_compute_return_target(bool terrain_following_allowed);
+    bool safe_rtl_init(bool ignore_checks);
+    void safe_rtl_run();
     bool sport_init(bool ignore_checks);
     void sport_run();
     bool stabilize_init(bool ignore_checks);
