@@ -272,12 +272,12 @@ void NOINLINE Sub::send_nav_controller_output(mavlink_channel_t chan)
     const Vector3f &targets = attitude_control.get_att_target_euler_cd();
     mavlink_msg_nav_controller_output_send(
         chan,
-        targets.x / 1.0e2f,
-        targets.y / 1.0e2f,
-        targets.z / 1.0e2f,
-        wp_nav.get_wp_bearing_to_destination() / 1.0e2f,
-        wp_nav.get_wp_distance_to_destination() / 1.0e2f,
-        pos_control.get_alt_error() / 1.0e2f,
+        targets.x * 1.0e-2f,
+        targets.y * 1.0e-2f,
+        targets.z * 1.0e-2f,
+        wp_nav.get_wp_bearing_to_destination() * 1.0e-2f,
+        MIN(wp_nav.get_wp_distance_to_destination() * 1.0e-2f, UINT16_MAX),
+        pos_control.get_alt_error() * 1.0e-2f,
         0,
         0);
 }
@@ -488,6 +488,7 @@ bool GCS_MAVLINK_Sub::try_send_message(enum ap_message id)
 
     case MSG_GPS_RAW:
         send_gps_raw(sub.gps);
+        break;
 
     case MSG_SYSTEM_TIME:
         CHECK_PAYLOAD_SIZE(SYSTEM_TIME);
@@ -763,7 +764,7 @@ GCS_MAVLINK_Sub::data_stream_send(void)
     }
 
     if (!sub.in_mavlink_delay && !sub.motors.armed()) {
-        handle_log_send(sub.DataFlash);
+        sub.DataFlash.handle_log_send(*this);
     }
 
     sub.gcs_out_of_time = false;
@@ -1634,22 +1635,6 @@ void GCS_MAVLINK_Sub::handleMessage(mavlink_message_t* msg)
         sub.gps.handle_msg(msg);
         break;
     }
-
-    case MAVLINK_MSG_ID_LOG_REQUEST_DATA:
-    case MAVLINK_MSG_ID_LOG_ERASE:
-        sub.in_log_download = true;
-        /* no break */
-    case MAVLINK_MSG_ID_LOG_REQUEST_LIST:
-        if (!sub.in_mavlink_delay && !sub.motors.armed()) {
-            handle_log_message(msg, sub.DataFlash);
-        }
-        break;
-    case MAVLINK_MSG_ID_LOG_REQUEST_END:
-        sub.in_log_download = false;
-        if (!sub.in_mavlink_delay && !sub.motors.armed()) {
-            handle_log_message(msg, sub.DataFlash);
-        }
-        break;
 
     case MAVLINK_MSG_ID_SERIAL_CONTROL:
         handle_serial_control(msg, sub.gps);

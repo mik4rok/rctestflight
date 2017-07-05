@@ -164,12 +164,12 @@ void NOINLINE Copter::send_nav_controller_output(mavlink_channel_t chan)
     const Vector3f &targets = attitude_control->get_att_target_euler_cd();
     mavlink_msg_nav_controller_output_send(
         chan,
-        targets.x / 1.0e2f,
-        targets.y / 1.0e2f,
-        targets.z / 1.0e2f,
-        wp_bearing / 1.0e2f,
-        wp_distance / 1.0e2f,
-        pos_control->get_alt_error() / 1.0e2f,
+        targets.x * 1.0e-2f,
+        targets.y * 1.0e-2f,
+        targets.z * 1.0e-2f,
+        wp_bearing * 1.0e-2f,
+        MIN(wp_distance * 1.0e-2f, UINT16_MAX),
+        pos_control->get_alt_error() * 1.0e-2f,
         0,
         0);
 }
@@ -606,7 +606,7 @@ const AP_Param::GroupInfo GCS_MAVLINK::var_info[] = {
 
     // @Param: EXT_STAT
     // @DisplayName: Extended status stream rate to ground station
-    // @Description: Stream rate of SYS_STATUS, POWER_STATUS, MEMINFO, CURRENT_WAYPOINT, GPS_RAW_INT, NAV_CONTROLLER_OUTPUT, and FENCE_STATUS to ground station
+    // @Description: Stream rate of SYS_STATUS, POWER_STATUS, MEMINFO, CURRENT_WAYPOINT, GPS_RAW_INT, GPS_RTK (if available), GPS2_RAW (if available), GPS2_RTK (if available), NAV_CONTROLLER_OUTPUT, and FENCE_STATUS to ground station
     // @Units: Hz
     // @Range: 0 10
     // @Increment: 1
@@ -696,7 +696,7 @@ GCS_MAVLINK_Copter::data_stream_send(void)
     }
 
     if (!copter.in_mavlink_delay && !copter.motors->armed()) {
-        handle_log_send(copter.DataFlash);
+        copter.DataFlash.handle_log_send(*this);
     }
 
     copter.gcs_out_of_time = false;
@@ -722,7 +722,7 @@ GCS_MAVLINK_Copter::data_stream_send(void)
         send_message(MSG_EXTENDED_STATUS1); // SYS_STATUS, POWER_STATUS
         send_message(MSG_EXTENDED_STATUS2); // MEMINFO
         send_message(MSG_CURRENT_WAYPOINT);
-        send_message(MSG_GPS_RAW);
+        send_message(MSG_GPS_RAW);          // GPS_RAW_INT, GPS_RTK (if available), GPS2_RAW (if available), GPS2_RTK (if available)
         send_message(MSG_NAV_CONTROLLER_OUTPUT);
         send_message(MSG_FENCE_STATUS);
     }
@@ -1836,23 +1836,6 @@ void GCS_MAVLINK_Copter::handleMessage(mavlink_message_t* msg)
         handle_radio_status(msg, copter.DataFlash, copter.should_log(MASK_LOG_PM));
         break;
     }
-
-    case MAVLINK_MSG_ID_LOG_REQUEST_DATA:
-        copter.in_log_download = true;
-        /* no break */
-    case MAVLINK_MSG_ID_LOG_ERASE:
-        /* no break */
-    case MAVLINK_MSG_ID_LOG_REQUEST_LIST:
-        if (!copter.in_mavlink_delay && !copter.motors->armed()) {
-            handle_log_message(msg, copter.DataFlash);
-        }
-        break;
-    case MAVLINK_MSG_ID_LOG_REQUEST_END:
-        copter.in_log_download = false;
-        if (!copter.in_mavlink_delay && !copter.motors->armed()) {
-            handle_log_message(msg, copter.DataFlash);
-        }
-        break;
 
     case MAVLINK_MSG_ID_SERIAL_CONTROL:
         handle_serial_control(msg, copter.gps);

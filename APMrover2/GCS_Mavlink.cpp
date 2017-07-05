@@ -144,7 +144,7 @@ void Rover::send_nav_controller_output(mavlink_channel_t chan)
         ahrs.groundspeed() * ins.get_gyro().z,  // use nav_pitch to hold actual Y accel
         nav_controller->nav_bearing_cd() * 0.01f,
         nav_controller->target_bearing_cd() * 0.01f,
-        wp_distance,
+        MIN(wp_distance, UINT16_MAX),
         0,
         groundspeed_error,
         nav_controller->crosstrack_error());
@@ -162,7 +162,7 @@ void Rover::send_servo_out(mavlink_channel_t chan)
         0,  // port 0
         10000 * channel_steer->norm_output(),
         0,
-        10000 * SRV_Channels::get_output_norm(SRV_Channel::k_throttle),
+        100 * SRV_Channels::get_output_scaled(SRV_Channel::k_throttle),
         0,
         0,
         0,
@@ -179,7 +179,7 @@ void Rover::send_vfr_hud(mavlink_channel_t chan)
         gps.ground_speed(),
         ahrs.groundspeed(),
         (ahrs.yaw_sensor / 100) % 360,
-        static_cast<uint16_t>(100 * fabsf(SRV_Channels::get_output_norm(SRV_Channel::k_throttle))),
+        SRV_Channels::get_output_scaled(SRV_Channel::k_throttle),
         current_loc.alt / 100.0f,
         0);
 }
@@ -307,10 +307,14 @@ bool GCS_MAVLINK_Rover::try_send_message(enum ap_message id)
         return true;
 
     case MSG_EXTENDED_STATUS1:
-        CHECK_PAYLOAD_SIZE(SYS_STATUS);
-        rover.send_extended_status1(chan);
-        CHECK_PAYLOAD_SIZE(POWER_STATUS);
-        send_power_status();
+        // send extended status only once vehicle has been initialised
+        // to avoid unnecessary errors being reported to user
+        if (initialised) {
+            CHECK_PAYLOAD_SIZE(SYS_STATUS);
+            rover.send_extended_status1(chan);
+            CHECK_PAYLOAD_SIZE(POWER_STATUS);
+            send_power_status();
+        }
         break;
 
     case MSG_EXTENDED_STATUS2:
@@ -587,7 +591,7 @@ GCS_MAVLINK_Rover::data_stream_send(void)
     rover.gcs_out_of_time = false;
 
     if (!rover.in_mavlink_delay) {
-        handle_log_send(rover.DataFlash);
+        rover.DataFlash.handle_log_send(*this);
     }
 
     send_queued_parameters();
@@ -1512,23 +1516,6 @@ void GCS_MAVLINK_Rover::handleMessage(mavlink_message_t* msg)
             handle_radio_status(msg, rover.DataFlash, rover.should_log(MASK_LOG_PM));
             break;
         }
-
-    case MAVLINK_MSG_ID_LOG_REQUEST_DATA:
-        rover.in_log_download = true;
-        /* no break */
-    case MAVLINK_MSG_ID_LOG_ERASE:
-        /* no break */
-    case MAVLINK_MSG_ID_LOG_REQUEST_LIST:
-        if (!rover.in_mavlink_delay) {
-            handle_log_message(msg, rover.DataFlash);
-        }
-        break;
-    case MAVLINK_MSG_ID_LOG_REQUEST_END:
-        rover.in_log_download = false;
-        if (!rover.in_mavlink_delay) {
-            handle_log_message(msg, rover.DataFlash);
-        }
-        break;
 
     case MAVLINK_MSG_ID_SERIAL_CONTROL:
         handle_serial_control(msg, rover.gps);

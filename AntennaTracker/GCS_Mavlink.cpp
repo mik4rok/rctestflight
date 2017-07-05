@@ -124,7 +124,7 @@ void Tracker::send_nav_controller_output(mavlink_channel_t chan)
         nav_status.pitch,
         nav_status.bearing,
         nav_status.bearing,
-        nav_status.distance,
+        MIN(nav_status.distance, UINT16_MAX),
         alt_diff,
         0,
         0);
@@ -374,6 +374,10 @@ GCS_MAVLINK_Tracker::data_stream_send(void)
     if (tracker.in_mavlink_delay) {
         // don't send any other stream types while in the delay callback
         return;
+    }
+
+    if (!tracker.in_mavlink_delay) {
+        tracker.DataFlash.handle_log_send(*this);
     }
 
     if (stream_trigger(STREAM_RAW_SENSORS)) {
@@ -830,23 +834,6 @@ mission_failed:
         handle_set_mode(msg, FUNCTOR_BIND(&tracker, &Tracker::mavlink_set_mode, bool, uint8_t));
         break;
     }
-
-    case MAVLINK_MSG_ID_LOG_REQUEST_DATA:
-        tracker.in_log_download = true;
-        /* no break */
-    case MAVLINK_MSG_ID_LOG_ERASE:
-        /* no break */
-    case MAVLINK_MSG_ID_LOG_REQUEST_LIST:
-        if (!tracker.in_mavlink_delay) {
-            handle_log_message(msg, tracker.DataFlash);
-        }
-        break;
-    case MAVLINK_MSG_ID_LOG_REQUEST_END:
-        tracker.in_log_download = false;
-        if (!tracker.in_mavlink_delay) {
-            handle_log_message(msg, tracker.DataFlash);
-        }
-        break;
 
     case MAVLINK_MSG_ID_SERIAL_CONTROL:
         handle_serial_control(msg, tracker.gps);
