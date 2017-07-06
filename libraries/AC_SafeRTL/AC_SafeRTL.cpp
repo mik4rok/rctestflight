@@ -26,7 +26,7 @@
 */
 
 // TODO deal with issues that might arise from multithreading
-Path::Path() :
+SafeRTL_Path::SafeRTL_Path() :
     accepting_new_points(true),
     _last_index(0),
     _simplification_complete(false),
@@ -38,7 +38,7 @@ Path::Path() :
     path[_last_index] = {0.0f, 0.0f, 0.0f};
 }
 
-void Path::append_if_far_enough(Vector3f p)
+void SafeRTL_Path::append_if_far_enough(Vector3f p)
 {
     if (!accepting_new_points) {
         return;
@@ -61,7 +61,7 @@ void Path::append_if_far_enough(Vector3f p)
 *   Otherwise, it will run a cleanup, based on info computed by the background methods, _rdp() and _detect_loops().
 *   If no cleanup is possible, this method returns false. This should be treated as an error condition.
 */
-bool Path::routine_cleanup()
+bool SafeRTL_Path::routine_cleanup()
 {
     // We only do a routine cleanup if the memory is almost full. Cleanup deletes
     // points which are potentially useful, so it would be bad to clean up if we don't have to
@@ -125,7 +125,7 @@ bool Path::routine_cleanup()
 *
 *  Probably best not to run this unless cleanup_ready() is returning true
 */
-Vector3f* Path::thorough_cleanup()
+Vector3f* SafeRTL_Path::thorough_cleanup()
 {
     // apply simplification
     _zero_points_by_simplification_bitmask();
@@ -142,12 +142,12 @@ Vector3f* Path::thorough_cleanup()
     return path;
 }
 
-Vector3f Path::get(int index)
+Vector3f SafeRTL_Path::get(int index)
 {
     return path[index];
 }
 
-bool Path::cleanup_ready()
+bool SafeRTL_Path::cleanup_ready()
 {
     return _pruning_complete && _simplification_complete;
 }
@@ -156,7 +156,7 @@ bool Path::cleanup_ready()
 *    Simplifies a 3D path, according to the Ramer-Douglas-Peucker algorithm.
 *    Returns the number of items which were removed. end_index is the index of the last element in the path.
 */
-void Path::rdp(uint32_t allowed_microseconds)
+void SafeRTL_Path::rdp(uint32_t allowed_microseconds)
 {
     if (_simplification_complete) {
         return;
@@ -208,7 +208,7 @@ void Path::rdp(uint32_t allowed_microseconds)
 *
 *   Note that this method might take a bit longer than allowed_microseconds. It only stops after it's already run longer than allowed_microseconds.
 */
-void Path::detect_loops(uint32_t allowed_microseconds)
+void SafeRTL_Path::detect_loops(uint32_t allowed_microseconds)
 {
     if (_pruning_complete) {
         return;
@@ -238,7 +238,7 @@ void Path::detect_loops(uint32_t allowed_microseconds)
     _pruning_complete = true;
 }
 
-void Path::clear_path()
+void SafeRTL_Path::clear_path()
 {
     _last_index = 0;
     path[_last_index] = {0.0f, 0.0f, 0.0f};
@@ -248,14 +248,14 @@ void Path::clear_path()
 // Private methods
 //
 
-void Path::_reset_rdp()
+void SafeRTL_Path::_reset_rdp()
 {
     _simplification_complete = false;
     _simplification_stack.clear();
     _simplification_bitmask.set();
 }
 
-void Path::_reset_pruning()
+void SafeRTL_Path::_reset_pruning()
 {
     _pruning_complete = false;
     _pruning_current_i = 0;
@@ -263,7 +263,7 @@ void Path::_reset_pruning()
     _prunable_loops.clear();
 }
 
-void Path::_zero_points_by_simplification_bitmask()
+void SafeRTL_Path::_zero_points_by_simplification_bitmask()
 {
     for (int i = 0; i <= _last_index; i++) {
         if (!_simplification_bitmask[i]) {
@@ -275,7 +275,7 @@ void Path::_zero_points_by_simplification_bitmask()
 /**
 *   Only prunes loops until points_to_delete points have been removed. It does not necessarily prune all loops.
 */
-void Path::_zero_points_by_loops(uint8_t points_to_delete)
+void SafeRTL_Path::_zero_points_by_loops(uint8_t points_to_delete)
 {
     int removed_points = 0;
     for (int i = 0; i < _prunable_loops.size(); i++) {
@@ -295,7 +295,7 @@ void Path::_zero_points_by_loops(uint8_t points_to_delete)
 *  Removes all NULL points from the path, and shifts remaining items to correct position.
 *  The first item will not be removed.
 */
-void Path::_remove_empty_points()
+void SafeRTL_Path::_remove_empty_points()
 {
     int i = 0;
     int j = 0;
@@ -319,7 +319,7 @@ void Path::_remove_empty_points()
 *  the pruning will still occur fine between the first parallel segment and a segment which is directly before or after the second segment.
 */
 // typedef struct dist_point dist_point;
-Path::dist_point Path::_segment_segment_dist(const Vector3f &p1, const Vector3f &p2, const Vector3f &p3, const Vector3f &p4)
+SafeRTL_Path::dist_point SafeRTL_Path::_segment_segment_dist(const Vector3f &p1, const Vector3f &p2, const Vector3f &p3, const Vector3f &p4)
 {
     Vector3f u = p2-p1;
     Vector3f v = p4-p3;
@@ -357,7 +357,7 @@ Path::dist_point Path::_segment_segment_dist(const Vector3f &p1, const Vector3f 
 /**
 *  Returns the closest distance from a point to a 3D line. The line is defined by any 2 points
 */
-float Path::_point_line_dist(const Vector3f &point, const Vector3f &line1, const Vector3f &line2)
+float SafeRTL_Path::_point_line_dist(const Vector3f &point, const Vector3f &line1, const Vector3f &line2)
 {
     // triangle side lengths
     float a = HYPOT(point, line1);

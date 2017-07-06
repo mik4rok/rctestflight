@@ -20,12 +20,12 @@
 // FIXME are inline methods preferred?
 #define HYPOT(a,b) (a-b).length()
 
-class Path {
+class SafeRTL_Path {
     // points are stored in meters from EKF origin in NED
     Vector3f path[MAX_PATH_LEN];
     uint8_t _last_index;
 public:
-    Path();
+    SafeRTL_Path();
     void append_if_far_enough(Vector3f);
     bool routine_cleanup();
     Vector3f* thorough_cleanup();

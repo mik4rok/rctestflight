@@ -2,7 +2,7 @@
 
 const AP_HAL::HAL &hal = AP_HAL::get_HAL();
 
-Path* p;
+SafeRTL_Path* p;
 
 void setup();
 void loop();
@@ -12,9 +12,9 @@ bool check_path(const std::vector<Vector3f>&);
 void setup()
 {
     hal.console->printf("SafeRTL performance test\n");
-    AP_BoardConfig{} .init();
+    AP_BoardConfig{}.init();
 
-    p = new Path();
+    p = new SafeRTL_Path();
 }
 
 void loop()
