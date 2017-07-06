@@ -306,6 +306,11 @@ void Copter::exit_mode(control_mode_t old_control_mode, control_mode_t new_contr
         }
     }
 #endif //HELI_FRAME
+
+    if(old_control_mode == SAFE_RTL){
+        // allow new breadcrumbs again.
+        safe_rtl_path.accepting_new_points = true;
+    }
 }
 
 // returns true or false whether mode requires GPS

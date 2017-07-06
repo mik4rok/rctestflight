@@ -25,17 +25,18 @@ class SafeRTL_Path {
     Vector3f path[MAX_PATH_LEN];
     uint8_t _last_index;
 public:
+    bool accepting_new_points; // false means that any call to append_if_far_enough() will fail. This should be unset when entering SafeRTL mode, and set when exiting.
     SafeRTL_Path();
     void append_if_far_enough(Vector3f);
     bool routine_cleanup();
     Vector3f* thorough_cleanup();
     Vector3f get(int);
+    Vector3f pop_point();
+    void clear_path();
+    bool cleanup_ready();
     // the two cleanup steps. These should be run regularly, maybe even by a different thread
     void rdp(uint32_t);
     void detect_loops(uint32_t);
-    bool cleanup_ready();
-    void clear_path();
-    bool accepting_new_points; // false means that any call to append_if_far_enough() will fail. This should be unset when entering SafeRTL mode, and set when exiting.
 private:
     // misc cleanup helper methods:
     void _reset_rdp();

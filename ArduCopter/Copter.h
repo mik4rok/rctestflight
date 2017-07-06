@@ -93,6 +93,7 @@
 #include <AP_Button/AP_Button.h>
 #include <AP_Arming/AP_Arming.h>
 #include <AP_VisualOdom/AP_VisualOdom.h>
+#include <AC_SafeRTL/AC_SafeRTL.h>
 
 // Configuration
 #include "defines.h"
@@ -395,6 +396,9 @@ private:
     RTLState rtl_state;  // records state of rtl (initial climb, returning home, etc)
     bool rtl_state_complete; // set to true if the current state is completed
 
+    // SafeRTL
+    SafeRTLState safe_rtl_state; // records state of SafeRTL
+
     struct {
         // NEU w/ Z element alt-above-ekf-origin unless use_terrain is true in which case Z element is alt-above-terrain
         Location_Class origin_point;
@@ -572,6 +576,8 @@ private:
 
     // Landing Gear Controller
     AP_LandingGear landinggear;
+
+    SafeRTL_Path safe_rtl_path;
 
     // terrain handling
 #if AP_TERRAIN_AVAILABLE && AC_TERRAIN

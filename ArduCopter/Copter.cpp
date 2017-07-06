@@ -23,7 +23,7 @@ const AP_HAL::HAL& hal = AP_HAL::get_HAL();
 Copter::Copter(void) :
     DataFlash{FIRMWARE_STRING, g.log_bitmask},
     flight_modes(&g.flight_mode1),
-    mission(ahrs, 
+    mission(ahrs,
             FUNCTOR_BIND_MEMBER(&Copter::start_command, bool, const AP_Mission::Mission_Command &),
             FUNCTOR_BIND_MEMBER(&Copter::verify_command_callback, bool, const AP_Mission::Mission_Command &),
             FUNCTOR_BIND_MEMBER(&Copter::exit_mission, void)),
@@ -37,6 +37,7 @@ Copter::Copter(void) :
     guided_mode(Guided_TakeOff),
     rtl_state(RTL_InitialClimb),
     rtl_state_complete(false),
+    safe_rtl_landing(false),
     circle_pilot_yaw_override(false),
     simple_cos_yaw(1.0f),
     simple_sin_yaw(0.0f),
@@ -70,6 +71,7 @@ Copter::Copter(void) :
     rtl_loiter_start_time(0),
     auto_trim_counter(0),
     ServoRelayEvents(relay),
+    safe_rtl_path(),
 #if CAMERA == ENABLED
     camera(&relay),
 #endif

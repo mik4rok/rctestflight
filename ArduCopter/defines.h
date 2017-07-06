@@ -220,6 +220,13 @@ enum RTLState {
     RTL_Land
 };
 
+// Safe RTL states
+enum SafeRTLState {
+    SafeRTL_PathFollow,
+    SafeRTL_PreLandPosition,
+    SafeRTL_Land
+}
+
 // Alt_Hold states
 enum AltHoldModeState {
     AltHold_MotorStopped,

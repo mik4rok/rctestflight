@@ -147,6 +147,17 @@ Vector3f SafeRTL_Path::get(int index)
     return path[index];
 }
 
+Vector3f SafeRTL_Path::pop_point()
+{
+    return path[_last_index--];
+}
+
+void SafeRTL_Path::clear_path()
+{
+    _last_index = 0;
+    path[_last_index] = {0.0f, 0.0f, 0.0f};
+}
+
 bool SafeRTL_Path::cleanup_ready()
 {
     return _pruning_complete && _simplification_complete;
@@ -236,12 +247,6 @@ void SafeRTL_Path::detect_loops(uint32_t allowed_microseconds)
         _pruning_current_i++;
     }
     _pruning_complete = true;
-}
-
-void SafeRTL_Path::clear_path()
-{
-    _last_index = 0;
-    path[_last_index] = {0.0f, 0.0f, 0.0f};
 }
 
 //
