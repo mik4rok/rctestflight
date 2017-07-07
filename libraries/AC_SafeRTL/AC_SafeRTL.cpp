@@ -57,7 +57,7 @@ void SafeRTL_Path::append_if_far_enough(Vector3f p)
 }
 
 /**
-*   Run this regularly, in the main loop (don't worry - it runs quickly). If no cleanup is needed, it will immediately return.
+*   Run this regularly, in the main loop (don't worry - it runs quickly, 100us). If no cleanup is needed, it will immediately return.
 *   Otherwise, it will run a cleanup, based on info computed by the background methods, _rdp() and _detect_loops().
 *   If no cleanup is possible, this method returns false. This should be treated as an error condition.
 */
