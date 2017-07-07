@@ -951,6 +951,7 @@ private:
     void rtl_compute_return_target(bool terrain_following_allowed);
     bool safe_rtl_init(bool ignore_checks);
     void safe_rtl_run();
+    void safe_rtl_cleanup();
     bool sport_init(bool ignore_checks);
     void sport_run();
     bool stabilize_init(bool ignore_checks);
