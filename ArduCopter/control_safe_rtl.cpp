@@ -12,11 +12,9 @@ bool Copter::safe_rtl_init(bool ignore_checks)
     if (position_ok() || ignore_checks) {
         safe_rtl_state = SafeRTL_PathFollow;
         // initialise waypoint and spline controller
-        wp_nav->wp_and_spline_init();
+        wp_nav->wp_and_spline_init(); // TODO is this necessary?
         // stay in place for now
-        Vector3f current_pos;
-        ahrs.get_relative_position_NED_origin(current_pos);
-        wp_nav->set_wp_destination(current_pos, false);
+        wp_nav->init_loiter_target(); // TODO am i suppoosed to do this? wp_nav->init_loiter_target(wp_nav->get_wp_destination());
         // initialise yaw
         set_auto_yaw_mode(AUTO_YAW_HOLD);
         // tell library to stop accepting new breadcrumbs
@@ -44,20 +42,27 @@ void Copter::safe_rtl_run()
             next_point[0] *= 100.0f;
             next_point[1] *= 100.0f;
             next_point[2] *= -100.0f; // invert because this next method wants cm NEU
+            gcs_send_text_fmt(MAV_SEVERITY_NOTICE, "SafeRTL going to: %f %f %f", next_point[0], next_point[1], next_point[2]);
             wp_nav->set_wp_destination(next_point, false);
         } else {
-             // go to the point that is 1m above home, instead of directly home.
-            wp_nav->set_wp_destination({0.0f, 0.0f, 100.0f}, false); // {0,0,-1} in NED
+            // go to the point that is 1m above home, instead of directly home.
+            wp_nav->set_wp_destination(Vector3f{0.0f, 0.0f, 100.0f}, false); // {0,0,-1} in NED
+            gcs_send_text_fmt(MAV_SEVERITY_NOTICE, "SafeRTL skipping: %f %f %f", next_point[0], next_point[1], next_point[2]);
             safe_rtl_state = SafeRTL_PreLandPosition;
+            // TODO try changing to land mode from here
         }
-    } else if (safe_rtl_state == SafeRTL_PreLandPosition && wp_nav->get_wp_distance_to_destination() <= 1.0f) {
+    } else if (safe_rtl_state == SafeRTL_PreLandPosition && wp_nav->get_wp_distance_to_destination() <= 100.0f) {
         rtl_land_start(); // FIXME this method will mess with rtl_state and rtl_state_complete
         safe_rtl_state = SafeRTL_Land;
+        return;
     } else if (safe_rtl_state == SafeRTL_Land) {
         rtl_land_run(); // FIXME same here
+        gcs_send_text_fmt(MAV_SEVERITY_NOTICE, "positioning");
+        hal.scheduler->delay(5e3); // 5 seconds
         return;
     }
 
+    motors->set_desired_spool_state(AP_Motors::DESIRED_THROTTLE_UNLIMITED);
     wp_nav->update_wpnav();
     pos_control->update_z_controller();
     attitude_control->input_euler_angle_roll_pitch_yaw(wp_nav->get_roll(), wp_nav->get_pitch(), get_auto_heading(),true, get_smoothing_gain());
@@ -65,7 +70,6 @@ void Copter::safe_rtl_run()
 
 void Copter::safe_rtl_cleanup()
 {
-    //gcs_send_text(MAV_SEVERITY_NOTICE, "debug");
     safe_rtl_path.detect_loops(300);
     safe_rtl_path.rdp(200);
 }
