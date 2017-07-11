@@ -149,6 +149,9 @@ Vector3f SafeRTL_Path::get(int index)
 
 Vector3f SafeRTL_Path::pop_point()
 {
+    if(_last_index == 0){
+        return {0.0f, 0.0f, 0.0f};
+    }
     return path[_last_index--];
 }
 

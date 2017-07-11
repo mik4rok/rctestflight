@@ -321,6 +321,7 @@ bool Copter::mode_requires_GPS(control_mode_t mode)
         case GUIDED:
         case LOITER:
         case RTL:
+        case SAFE_RTL:
         case CIRCLE:
         case DRIFT:
         case POSHOLD:

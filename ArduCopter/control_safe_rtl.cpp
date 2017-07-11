@@ -9,12 +9,13 @@
 
 bool Copter::safe_rtl_init(bool ignore_checks)
 {
+
     if (position_ok() || ignore_checks) {
-        safe_rtl_state = SafeRTL_PathFollow;
+        safe_rtl_state = SafeRTL_WaitForCleanup;
         // initialise waypoint and spline controller
         wp_nav->wp_and_spline_init(); // TODO is this necessary?
         // stay in place for now
-        wp_nav->init_loiter_target(); // TODO am i suppoosed to do this? wp_nav->init_loiter_target(wp_nav->get_wp_destination());
+        wp_nav->init_loiter_target(); // TODO this isn't stopping in place. am i supposed to do this? wp_nav->init_loiter_target(wp_nav->get_wp_destination());
         // initialise yaw
         set_auto_yaw_mode(AUTO_YAW_HOLD);
         // tell library to stop accepting new breadcrumbs
@@ -27,48 +28,93 @@ bool Copter::safe_rtl_init(bool ignore_checks)
 
 void Copter::safe_rtl_run()
 {
-    // if cleanup algorithms aren't ready, stay in place
-    if (!safe_rtl_path.cleanup_ready()){
-        wp_nav->update_wpnav();
-        pos_control->update_z_controller();
-        attitude_control->input_euler_angle_roll_pitch_yaw(wp_nav->get_roll(), wp_nav->get_pitch(), get_auto_heading(),true, get_smoothing_gain());
-        return;
+    switch(safe_rtl_state){
+        case SafeRTL_WaitForCleanup:
+            safe_rtl_wait_cleanup();
+            break;
+        case SafeRTL_PathFollow:
+            safe_rtl_path_follow();
+            break;
+        case SafeRTL_PreLandPosition:
+            safe_rtl_pre_land_position();
+            break;
+        case SafeRTL_Land:
+            safe_rtl_land();
+            break;
     }
+}
 
+void Copter::safe_rtl_wait_cleanup()
+{
+    wp_nav->update_wpnav();
+    pos_control->update_z_controller();
+    attitude_control->input_euler_angle_roll_pitch_yaw(wp_nav->get_roll(), wp_nav->get_pitch(), get_auto_heading(),true, get_smoothing_gain());
+
+    if (safe_rtl_path.cleanup_ready()){
+        safe_rtl_path.thorough_cleanup();
+        safe_rtl_state = SafeRTL_PathFollow;
+    }
+}
+
+void Copter::safe_rtl_path_follow()
+{
     // if we are within 1 meter of current target point, switch the next point to be our target.
-    if (safe_rtl_state == SafeRTL_PathFollow && wp_nav->get_wp_distance_to_destination() <= 100.0f){ // TODO parameterize 100
+    if(wp_nav->get_wp_distance_to_destination() <= 100.0f){ // TODO parameterize 100
         Vector3f next_point = safe_rtl_path.pop_point();
         if (next_point != Vector3f{0.0f, 0.0f, 0.0f}){
             next_point[0] *= 100.0f;
             next_point[1] *= 100.0f;
             next_point[2] *= -100.0f; // invert because this next method wants cm NEU
-            gcs_send_text_fmt(MAV_SEVERITY_NOTICE, "SafeRTL going to: %f %f %f", next_point[0], next_point[1], next_point[2]);
+            // gcs_send_text_fmt(MAV_SEVERITY_NOTICE, "SafeRTL going to: %f %f %f", next_point[0], next_point[1], next_point[2]);
             wp_nav->set_wp_destination(next_point, false);
         } else {
             // go to the point that is 1m above home, instead of directly home.
-            wp_nav->set_wp_destination(Vector3f{0.0f, 0.0f, 100.0f}, false); // {0,0,-1} in NED
-            gcs_send_text_fmt(MAV_SEVERITY_NOTICE, "SafeRTL skipping: %f %f %f", next_point[0], next_point[1], next_point[2]);
+            wp_nav->set_wp_destination(Vector3f{0.0f, 0.0f, 200.0f}, false); // {0,0,-2} in NED
             safe_rtl_state = SafeRTL_PreLandPosition;
-            // TODO try changing to land mode from here
         }
-    } else if (safe_rtl_state == SafeRTL_PreLandPosition && wp_nav->get_wp_distance_to_destination() <= 100.0f) {
-        rtl_land_start(); // FIXME this method will mess with rtl_state and rtl_state_complete
-        safe_rtl_state = SafeRTL_Land;
-        return;
-    } else if (safe_rtl_state == SafeRTL_Land) {
-        rtl_land_run(); // FIXME same here
-        gcs_send_text_fmt(MAV_SEVERITY_NOTICE, "positioning");
-        hal.scheduler->delay(5e3); // 5 seconds
-        return;
     }
+    motors->set_desired_spool_state(AP_Motors::DESIRED_THROTTLE_UNLIMITED);
+    wp_nav->update_wpnav();
+    pos_control->update_z_controller();
+    // TODO figure out heading. Should it follow that parameter? Probably best to copy behavior rtl
+    attitude_control->input_euler_angle_roll_pitch_yaw(wp_nav->get_roll(), wp_nav->get_pitch(), get_auto_heading(),true, get_smoothing_gain());
+}
 
+void Copter::safe_rtl_pre_land_position()
+{
+    // if we are within 1 meter of {0,0,-2}, we are ready to land.
+    if(wp_nav->get_wp_distance_to_destination() <= 100.0f){
+        safe_rtl_state = SafeRTL_Land;
+    }
     motors->set_desired_spool_state(AP_Motors::DESIRED_THROTTLE_UNLIMITED);
     wp_nav->update_wpnav();
     pos_control->update_z_controller();
     attitude_control->input_euler_angle_roll_pitch_yaw(wp_nav->get_roll(), wp_nav->get_pitch(), get_auto_heading(),true, get_smoothing_gain());
 }
 
-void Copter::safe_rtl_cleanup()
+void Copter::safe_rtl_land()
+{
+    // TODO do this better. Do something similar to rtl_land_init() and rtl_land_run()
+    set_mode(LAND, MODE_REASON_UNKNOWN);
+}
+
+/**
+*   This method should be run a couple times per second.
+*/
+void Copter::safe_rtl_drop_breadcrumb()
+{
+    Vector3f current_pos {};
+    if(ahrs.get_relative_position_NED_origin(current_pos)){ // meters from origin, NED
+        safe_rtl_path.append_if_far_enough(current_pos);
+        safe_rtl_path.routine_cleanup(); // this will probably return immediately, but sometimes might take around 100us.
+    }
+}
+
+/**
+*   This method might take longer than 1ms. It should be run as often as possible,
+*   ideally not in the main loop.
+*/
+void Copter::safe_rtl_background_cleanup()
 {
     safe_rtl_path.detect_loops(300);
     safe_rtl_path.rdp(200);

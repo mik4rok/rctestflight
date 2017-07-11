@@ -222,6 +222,7 @@ enum RTLState {
 
 // Safe RTL states
 enum SafeRTLState {
+    SafeRTL_WaitForCleanup,
     SafeRTL_PathFollow,
     SafeRTL_PreLandPosition,
     SafeRTL_Land

@@ -82,7 +82,7 @@
   and the maximum time they are expected to take (in microseconds)
  */
 const AP_Scheduler::Task Copter::scheduler_tasks[] = {
-    SCHED_TASK(safe_rtl_cleanup,      20,    800),
+    SCHED_TASK(safe_rtl_background_cleanup,      20,    800),
     SCHED_TASK(rc_loop,              100,    130),
     SCHED_TASK(throttle_loop,         50,     75),
     SCHED_TASK(update_GPS,            50,    200),
@@ -466,11 +466,7 @@ void Copter::three_hz_loop()
     tuning();
 
     // if appropriate, drop a new breadcrumb for SafeRTL.
-    Vector3f current_pos {};
-    if(ahrs.get_relative_position_NED_origin(current_pos)){ // meters from origin, NED
-        safe_rtl_path.append_if_far_enough(current_pos);
-        safe_rtl_path.routine_cleanup(); // this will probably return immediately, but sometimes might take around 100us.
-    }
+    safe_rtl_drop_breadcrumb();
 }
 
 // one_hz_loop - runs at 1Hz
