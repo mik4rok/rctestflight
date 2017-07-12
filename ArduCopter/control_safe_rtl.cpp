@@ -9,17 +9,17 @@
 
 bool Copter::safe_rtl_init(bool ignore_checks)
 {
-
     if (position_ok() || ignore_checks) {
         safe_rtl_state = SafeRTL_WaitForCleanup;
         // initialise waypoint and spline controller
-        wp_nav->wp_and_spline_init(); // TODO is this necessary?
+        wp_nav->wp_and_spline_init();
         // stay in place for now
         wp_nav->init_loiter_target(); // TODO this isn't stopping in place. am i supposed to do this? wp_nav->init_loiter_target(wp_nav->get_wp_destination());
         // look in copter for stopping point or get_wp_destination.
 
-        // initialise yaw
-        set_auto_yaw_mode(AUTO_YAW_HOLD);
+        // initialise yaw to obey user parameter
+        set_auto_yaw_mode(get_default_auto_yaw_mode(true));
+
         // tell library to stop accepting new breadcrumbs
         safe_rtl_path.accepting_new_points = false;
         return true;
@@ -60,7 +60,7 @@ void Copter::safe_rtl_wait_cleanup()
 
 void Copter::safe_rtl_path_follow()
 {
-    // if we areclose to current target point, switch the next point to be our target.
+    // if we are close to current target point, switch the next point to be our target.
     if(wp_nav->reached_wp_destination()){
         Vector3f next_point = safe_rtl_path.pop_point();
         if (next_point != Vector3f{0.0f, 0.0f, 0.0f}){
@@ -75,6 +75,8 @@ void Copter::safe_rtl_path_follow()
             safe_rtl_state = SafeRTL_PreLandPosition;
         }
     }
+
+    // update controllers
     motors->set_desired_spool_state(AP_Motors::DESIRED_THROTTLE_UNLIMITED);
     wp_nav->update_wpnav();
     pos_control->update_z_controller();
@@ -96,7 +98,7 @@ void Copter::safe_rtl_pre_land_position()
 
 void Copter::safe_rtl_land()
 {
-    // TODO do this better. Do something similar to rtl_land_init() and rtl_land_run()
+    // TODO do this better. Try to reuse rtl_land_init() and rtl_land_run()
     set_mode(LAND, MODE_REASON_UNKNOWN);
 }
 
