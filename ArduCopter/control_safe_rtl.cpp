@@ -16,6 +16,8 @@ bool Copter::safe_rtl_init(bool ignore_checks)
         wp_nav->wp_and_spline_init(); // TODO is this necessary?
         // stay in place for now
         wp_nav->init_loiter_target(); // TODO this isn't stopping in place. am i supposed to do this? wp_nav->init_loiter_target(wp_nav->get_wp_destination());
+        // look in copter for stopping point or get_wp_destination.
+
         // initialise yaw
         set_auto_yaw_mode(AUTO_YAW_HOLD);
         // tell library to stop accepting new breadcrumbs
@@ -58,8 +60,8 @@ void Copter::safe_rtl_wait_cleanup()
 
 void Copter::safe_rtl_path_follow()
 {
-    // if we are within 1 meter of current target point, switch the next point to be our target.
-    if(wp_nav->get_wp_distance_to_destination() <= 100.0f){ // TODO parameterize 100
+    // if we areclose to current target point, switch the next point to be our target.
+    if(wp_nav->reached_wp_destination()){
         Vector3f next_point = safe_rtl_path.pop_point();
         if (next_point != Vector3f{0.0f, 0.0f, 0.0f}){
             next_point[0] *= 100.0f;
@@ -82,8 +84,8 @@ void Copter::safe_rtl_path_follow()
 
 void Copter::safe_rtl_pre_land_position()
 {
-    // if we are within 1 meter of {0,0,-2}, we are ready to land.
-    if(wp_nav->get_wp_distance_to_destination() <= 100.0f){
+    // if we are close to {0,0,-2}, we are ready to land.
+    if(wp_nav->reached_wp_destination()){
         safe_rtl_state = SafeRTL_Land;
     }
     motors->set_desired_spool_state(AP_Motors::DESIRED_THROTTLE_UNLIMITED);
