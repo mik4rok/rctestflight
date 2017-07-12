@@ -89,7 +89,7 @@ public:
     void        init(AP_HAL::UARTDriver *port, mavlink_channel_t mav_chan);
     void        setup_uart(const AP_SerialManager& serial_manager, AP_SerialManager::SerialProtocol protocol, uint8_t instance);
     void        send_message(enum ap_message id);
-    void        send_text(MAV_SEVERITY severity, const char *str);
+    void        send_text(MAV_SEVERITY severity, const char *fmt, ...);
     virtual void        data_stream_send(void) = 0;
     void        queued_param_send();
     void        queued_waypoint_send();
@@ -169,7 +169,6 @@ public:
     void send_local_position(const AP_AHRS &ahrs) const;
     void send_vibration(const AP_InertialSensor &ins) const;
     void send_home(const Location &home) const;
-    static void send_home_all(const Location &home);
     void send_heartbeat(uint8_t type, uint8_t base_mode, uint32_t custom_mode, uint8_t system_status);
     void send_servo_output_raw(bool hil);
     static void send_collision_all(const AP_Avoidance::Obstacle &threat, MAV_COLLISION_ACTION behaviour);
@@ -181,13 +180,6 @@ public:
 
     // return a bitmap of streaming channels
     static uint8_t streaming_channel_mask(void) { return chan_is_streaming; }
-
-    /*
-    send a statustext message to active MAVLink connections, or a specific
-    one. This function is static so it can be called from any library.
-    */
-    static void send_statustext_all(MAV_SEVERITY severity, const char *fmt, ...);
-    static void send_statustext_chan(MAV_SEVERITY severity, uint8_t dest_chan, const char *fmt, ...);
 
     // send a PARAM_VALUE message to all active MAVLink connections.
     static void send_parameter_value_all(const char *param_name, ap_var_type param_type, float param_value);
@@ -227,7 +219,8 @@ protected:
     // overridable method to check for packet acceptance. Allows for
     // enforcement of GCS sysid
     virtual bool accept_packet(const mavlink_status_t &status, mavlink_message_t &msg) { return true; }
-    
+    virtual AP_Mission *get_mission() = 0;
+
     bool            waypoint_receiving; // currently receiving
     // the following two variables are only here because of Tracker
     uint16_t        waypoint_request_i; // request index
@@ -248,7 +241,7 @@ protected:
     void handle_mission_request_list(AP_Mission &mission, mavlink_message_t *msg);
     void handle_mission_request(AP_Mission &mission, mavlink_message_t *msg);
     void handle_mission_clear_all(AP_Mission &mission, mavlink_message_t *msg);
-    void handle_mission_set_current(AP_Mission &mission, mavlink_message_t *msg);
+    virtual void handle_mission_set_current(AP_Mission &mission, mavlink_message_t *msg);
     void handle_mission_count(AP_Mission &mission, mavlink_message_t *msg);
     void handle_mission_write_partial_list(AP_Mission &mission, mavlink_message_t *msg);
     bool handle_mission_item(mavlink_message_t *msg, AP_Mission &mission);
@@ -391,6 +384,7 @@ private:
 
     virtual bool handle_guided_request(AP_Mission::Mission_Command &cmd) = 0;
     virtual void handle_change_alt_request(AP_Mission::Mission_Command &cmd) = 0;
+    void handle_common_mission_message(mavlink_message_t *msg);
 
     void lock_channel(mavlink_channel_t chan, bool lock);
 
@@ -429,8 +423,24 @@ public:
         return _singleton;
     }
 
+    void send_text(MAV_SEVERITY severity, const char *fmt, ...);
     virtual void send_statustext(MAV_SEVERITY severity, uint8_t dest_bitmask, const char *text);
     void service_statustext(void);
+    virtual GCS_MAVLINK &chan(const uint8_t ofs) = 0;
+    virtual const GCS_MAVLINK &chan(const uint8_t ofs) const = 0;
+    virtual uint8_t num_gcs() const = 0;
+    void reset_cli_timeout();
+    void send_message(enum ap_message id);
+    void send_mission_item_reached_message(uint16_t mission_index);
+    void send_home(const Location &home) const;
+    void data_stream_send();
+    void update();
+    virtual void setup_uarts(AP_SerialManager &serial_manager);
+    void handle_interactive_setup();
+
+    FUNCTOR_TYPEDEF(run_cli_fn, void, AP_HAL::UARTDriver*);
+    run_cli_fn _run_cli;
+    void set_run_cli_func(run_cli_fn run_cli) { _run_cli = run_cli; }
 
     /*
       set a dataflash pointer for logging
@@ -456,6 +466,9 @@ public:
 private:
 
     static GCS *_singleton;
+
+    virtual bool cli_enabled() const = 0;
+    virtual AP_HAL::BetterStream*  cliSerial() = 0;
 
     struct statustext_t {
         uint8_t                 bitmask;

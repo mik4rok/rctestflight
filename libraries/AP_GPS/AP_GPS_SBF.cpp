@@ -65,7 +65,8 @@ AP_GPS_SBF::read(void)
 
         if (now > _init_blob_time) {
             port->write((const uint8_t*)init_str, strlen(init_str));
-            _init_blob_time = now + 1000;
+            // if this is too low a race condition on start occurs and the GPS isn't detected
+            _init_blob_time = now + 2000;
         }
     }
 
@@ -318,13 +319,13 @@ void AP_GPS_SBF::broadcast_configuration_failure_reason(void) const
 {
     if (gps._raw_data) {
         if (!(RxState & SBF_DISK_MOUNTED)){
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "GPS %d: SBF disk is not mounted", state.instance + 1);
+            gcs().send_text(MAV_SEVERITY_INFO, "GPS %d: SBF disk is not mounted", state.instance + 1);
         }
         else if (RxState & SBF_DISK_FULL) {
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "GPS %d: SBF disk is full", state.instance + 1);
+            gcs().send_text(MAV_SEVERITY_INFO, "GPS %d: SBF disk is full", state.instance + 1);
         }
         else if (!(RxState & SBF_DISK_ACTIVITY)) {
-            GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_INFO, "GPS %d: SBF is not currently logging", state.instance + 1);
+            gcs().send_text(MAV_SEVERITY_INFO, "GPS %d: SBF is not currently logging", state.instance + 1);
         }
     }
 }

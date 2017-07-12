@@ -169,6 +169,8 @@ const AP_Param::GroupInfo AP_BoardConfig::var_info[] = {
 #endif
 #endif
 
+    // ID number 11 reserved for AP_Radio (pending PR)
+    
     AP_GROUPEND
 };
 
@@ -218,7 +220,7 @@ void AP_BoardConfig::sensor_config_error(const char *reason)
     */
     while (true) {
         printf("Sensor failure: %s\n", reason);
-        GCS_MAVLINK::send_statustext_all(MAV_SEVERITY_ERROR, "Check BRD_TYPE: %s", reason);
+        gcs().send_text(MAV_SEVERITY_ERROR, "Check BRD_TYPE: %s", reason);
         hal.scheduler->delay(3000);
     }
 }

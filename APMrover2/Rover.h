@@ -63,6 +63,7 @@
 #include <AP_BoardConfig/AP_BoardConfig.h>
 #include <AP_BoardConfig/AP_BoardConfig_CAN.h>
 #include <AP_Frsky_Telem/AP_Frsky_Telem.h>
+#include "AP_MotorsUGV.h"
 
 #include "AP_Arming.h"
 #include "compat.h"
@@ -86,6 +87,7 @@
 #endif
 #include "Parameters.h"
 #include "GCS_Mavlink.h"
+#include "GCS_Rover.h"
 
 #include <AP_Declination/AP_Declination.h>          // ArduPilot Mega Declination Helper Library
 
@@ -102,6 +104,7 @@ public:
 #if ADVANCED_FAILSAFE == ENABLED
     friend class AP_AdvancedFailsafe_Rover;
 #endif
+    friend class GCS_Rover;
 
     Rover(void);
 
@@ -189,10 +192,8 @@ private:
 
     // GCS handling
     AP_SerialManager serial_manager;
-    const uint8_t num_gcs;
-    GCS_MAVLINK_Rover gcs_chan[MAVLINK_COMM_NUM_BUFFERS];
-    GCS _gcs;  // avoid using this; use gcs()
-    GCS &gcs() { return _gcs; }
+    GCS_Rover _gcs;  // avoid using this; use gcs()
+    GCS_Rover &gcs() { return _gcs; }
 
     // relay support
     AP_Relay relay;
@@ -450,11 +451,8 @@ private:
     void send_rangefinder(mavlink_channel_t chan);
     void send_current_waypoint(mavlink_channel_t chan);
     bool telemetry_delayed(mavlink_channel_t chan);
-    void gcs_send_message(enum ap_message id);
-    void gcs_send_mission_item_reached_message(uint16_t mission_index);
     void gcs_data_stream_send(void);
     void gcs_update(void);
-    void gcs_send_text(MAV_SEVERITY severity, const char *str);
     void gcs_retry_deferred(void);
 
     void do_erase_logs(void);
@@ -478,14 +476,11 @@ private:
     void Log_Arm_Disarm();
 
     void load_parameters(void);
-    void throttle_slew_limit(void);
     bool auto_check_trigger(void);
     bool use_pivot_steering(void);
     void calc_throttle(float target_speed);
     void calc_lateral_acceleration();
     void calc_nav_steer();
-    bool have_skid_steering();
-    void mix_skid_steering();
     void set_servos(void);
     void set_auto_WP(const struct Location& loc);
     void set_guided_WP(const struct Location& loc);
@@ -560,7 +555,6 @@ private:
     uint8_t check_digital_pin(uint8_t pin);
     bool should_log(uint32_t mask);
     void print_hit_enter();
-    void gcs_send_text_fmt(MAV_SEVERITY severity, const char *fmt, ...);
     void print_mode(AP_HAL::BetterStream *port, uint8_t mode);
     void notify_mode(enum mode new_mode);
     bool start_command(const AP_Mission::Mission_Command& cmd);

@@ -69,6 +69,7 @@
 
 #include "Parameters.h"
 #include "GCS_Mavlink.h"
+#include "GCS_Tracker.h"
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
 #include <SITL/SITL.h>
@@ -77,6 +78,7 @@
 class Tracker : public AP_HAL::HAL::Callbacks {
 public:
     friend class GCS_MAVLINK_Tracker;
+    friend class GCS_Tracker;
     friend class Parameters;
 
     Tracker(void);
@@ -136,10 +138,8 @@ private:
     bool pitch_servo_out_filt_init = false;
 
     AP_SerialManager serial_manager;
-    const uint8_t num_gcs = MAVLINK_COMM_NUM_BUFFERS;
-    GCS_MAVLINK_Tracker gcs_chan[MAVLINK_COMM_NUM_BUFFERS];
-    GCS _gcs; // avoid using this; use GCS::instance()
-    GCS &gcs() { return _gcs; }
+    GCS_Tracker _gcs; // avoid using this; use gcs()
+    GCS_Tracker &gcs() { return _gcs; }
 
     AP_BoardConfig BoardConfig;
 
@@ -204,10 +204,8 @@ private:
     void send_nav_controller_output(mavlink_channel_t chan);
     void send_simstate(mavlink_channel_t chan);
     void mavlink_check_target(const mavlink_message_t* msg);
-    void gcs_send_message(enum ap_message id);
     void gcs_data_stream_send(void);
     void gcs_update(void);
-    void gcs_send_text(MAV_SEVERITY severity, const char *str);
     void gcs_retry_deferred(void);
     void load_parameters(void);
     void update_auto(void);
@@ -255,7 +253,6 @@ private:
     void tracking_update_pressure(const mavlink_scaled_pressure_t &msg);
     void tracking_manual_control(const mavlink_manual_control_t &msg);
     void update_armed_disarmed();
-    void gcs_send_text_fmt(MAV_SEVERITY severity, const char *fmt, ...);
     void init_capabilities(void);
     void compass_cal_update();
     void Log_Write_Attitude();

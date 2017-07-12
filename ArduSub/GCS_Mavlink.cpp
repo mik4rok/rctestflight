@@ -8,12 +8,12 @@
 
 void Sub::gcs_send_heartbeat(void)
 {
-    gcs_send_message(MSG_HEARTBEAT);
+    gcs().send_message(MSG_HEARTBEAT);
 }
 
 void Sub::gcs_send_deferred(void)
 {
-    gcs_send_message(MSG_RETRY_DEFERRED);
+    gcs().send_message(MSG_RETRY_DEFERRED);
     gcs().service_statustext();
 }
 
@@ -76,7 +76,7 @@ NOINLINE void Sub::send_heartbeat(mavlink_channel_t chan)
     uint8_t mav_type;
     mav_type = MAV_TYPE_SUBMARINE;
 
-    gcs_chan[chan-MAVLINK_COMM_0].send_heartbeat(mav_type,
+    gcs().chan(chan-MAVLINK_COMM_0).send_heartbeat(mav_type,
                                             base_mode,
                                             custom_mode,
                                             system_status);
@@ -932,50 +932,6 @@ void GCS_MAVLINK_Sub::handleMessage(mavlink_message_t* msg)
         break;
     }
 
-    case MAVLINK_MSG_ID_MISSION_WRITE_PARTIAL_LIST: { // MAV ID: 38
-        handle_mission_write_partial_list(sub.mission, msg);
-        break;
-    }
-
-    // GCS has sent us a mission item, store to EEPROM
-    case MAVLINK_MSG_ID_MISSION_ITEM:
-    case MAVLINK_MSG_ID_MISSION_ITEM_INT: {         // MAV ID: 39
-        if (handle_mission_item(msg, sub.mission)) {
-            sub.DataFlash.Log_Write_EntireMission(sub.mission);
-        }
-        break;
-    }
-
-    // read an individual command from EEPROM and send it to the GCS
-    case MAVLINK_MSG_ID_MISSION_REQUEST_INT:
-    case MAVLINK_MSG_ID_MISSION_REQUEST: {   // MAV ID: 40, 51
-        handle_mission_request(sub.mission, msg);
-        break;
-    }
-
-    case MAVLINK_MSG_ID_MISSION_SET_CURRENT: {  // MAV ID: 41
-        handle_mission_set_current(sub.mission, msg);
-        break;
-    }
-
-    // GCS request the full list of commands, we return just the number and leave the GCS to then request each command individually
-    case MAVLINK_MSG_ID_MISSION_REQUEST_LIST: {     // MAV ID: 43
-        handle_mission_request_list(sub.mission, msg);
-        break;
-    }
-
-    // GCS provides the full number of commands it wishes to upload
-    //  individual commands will then be sent from the GCS using the MAVLINK_MSG_ID_MISSION_ITEM message
-    case MAVLINK_MSG_ID_MISSION_COUNT: {        // MAV ID: 44
-        handle_mission_count(sub.mission, msg);
-        break;
-    }
-
-    case MAVLINK_MSG_ID_MISSION_CLEAR_ALL: {    // MAV ID: 45
-        handle_mission_clear_all(sub.mission, msg);
-        break;
-    }
-
     case MAVLINK_MSG_ID_REQUEST_DATA_STREAM: {  // MAV ID: 66
         handle_request_data_stream(msg, false);
         break;
@@ -1075,7 +1031,7 @@ void GCS_MAVLINK_Sub::handleMessage(mavlink_message_t* msg)
         case MAV_CMD_PREFLIGHT_STORAGE:
             if (is_equal(packet.param1, 2.0f)) {
                 AP_Param::erase_all();
-                sub.gcs_send_text(MAV_SEVERITY_WARNING, "All parameters reset, reboot board");
+                gcs().send_text(MAV_SEVERITY_WARNING, "All parameters reset, reboot board");
                 result= MAV_RESULT_ACCEPTED;
             }
             break;
@@ -1264,7 +1220,7 @@ void GCS_MAVLINK_Sub::handleMessage(mavlink_message_t* msg)
             } else if (is_equal(packet.param6,1.0f)) {
                 // compassmot calibration
                 //result = sub.mavlink_compassmot(chan);
-                sub.gcs_send_text(MAV_SEVERITY_INFO, "#CompassMot calibration not supported");
+                gcs().send_text(MAV_SEVERITY_INFO, "#CompassMot calibration not supported");
                 result = MAV_RESULT_UNSUPPORTED;
             }
             break;
@@ -1649,7 +1605,7 @@ void GCS_MAVLINK_Sub::handleMessage(mavlink_message_t* msg)
         // send or receive fence points with GCS
     case MAVLINK_MSG_ID_FENCE_POINT:            // MAV ID: 160
     case MAVLINK_MSG_ID_FENCE_FETCH_POINT:
-        sub.fence.handle_msg(chan, msg);
+        sub.fence.handle_msg(*this, msg);
         break;
 #endif // AC_FENCE == ENABLED
 
@@ -1804,7 +1760,7 @@ void GCS_MAVLINK_Sub::handleMessage(mavlink_message_t* msg)
 void Sub::mavlink_delay_cb()
 {
     static uint32_t last_1hz, last_50hz, last_5s;
-    if (!gcs_chan[0].initialised || in_mavlink_delay) {
+    if (!gcs().chan(0).initialised || in_mavlink_delay) {
         return;
     }
 
@@ -1815,7 +1771,7 @@ void Sub::mavlink_delay_cb()
     if (tnow - last_1hz > 1000) {
         last_1hz = tnow;
         gcs_send_heartbeat();
-        gcs_send_message(MSG_EXTENDED_STATUS1);
+        gcs().send_message(MSG_EXTENDED_STATUS1);
     }
     if (tnow - last_50hz > 20) {
         last_50hz = tnow;
@@ -1826,7 +1782,7 @@ void Sub::mavlink_delay_cb()
     }
     if (tnow - last_5s > 5000) {
         last_5s = tnow;
-        gcs_send_text(MAV_SEVERITY_INFO, "Initialising APM");
+        gcs().send_text(MAV_SEVERITY_INFO, "Initialising APM");
     }
 
     DataFlash.EnableWrites(true);
@@ -1834,40 +1790,11 @@ void Sub::mavlink_delay_cb()
 }
 
 /*
- *  send a message on both GCS links
- */
-void Sub::gcs_send_message(enum ap_message id)
-{
-    for (uint8_t i=0; i<num_gcs; i++) {
-        if (gcs_chan[i].initialised) {
-            gcs_chan[i].send_message(id);
-        }
-    }
-}
-
-/*
- *  send a mission item reached message and load the index before the send attempt in case it may get delayed
- */
-void Sub::gcs_send_mission_item_reached_message(uint16_t mission_index)
-{
-    for (uint8_t i=0; i<num_gcs; i++) {
-        if (gcs_chan[i].initialised) {
-            gcs_chan[i].mission_item_reached_index = mission_index;
-            gcs_chan[i].send_message(MSG_MISSION_ITEM_REACHED);
-        }
-    }
-}
-
-/*
  *  send data streams in the given rate range on both links
  */
 void Sub::gcs_data_stream_send(void)
 {
-    for (uint8_t i=0; i<num_gcs; i++) {
-        if (gcs_chan[i].initialised) {
-            gcs_chan[i].data_stream_send();
-        }
-    }
+    gcs().data_stream_send();
 }
 
 /*
@@ -1875,29 +1802,10 @@ void Sub::gcs_data_stream_send(void)
  */
 void Sub::gcs_check_input(void)
 {
-    for (uint8_t i=0; i<num_gcs; i++) {
-        if (gcs_chan[i].initialised) {
-            gcs_chan[i].update(NULL);
-        }
-    }
+    gcs().update();
 }
 
-void Sub::gcs_send_text(MAV_SEVERITY severity, const char *str)
+AP_Mission *GCS_MAVLINK_Sub::get_mission()
 {
-    gcs().send_statustext(severity, 0xFF, str);
-}
-
-/*
- *  send a low priority formatted message to the GCS
- *  only one fits in the queue, so if you send more than one before the
- *  last one gets into the serial buffer then the old one will be lost
- */
-void Sub::gcs_send_text_fmt(MAV_SEVERITY severity, const char *fmt, ...)
-{
-    char str[MAVLINK_MSG_STATUSTEXT_FIELD_TEXT_LEN] {};
-    va_list arg_list;
-    va_start(arg_list, fmt);
-    va_end(arg_list);
-    hal.util->vsnprintf((char *)str, sizeof(str), fmt, arg_list);
-    gcs().send_statustext(severity, 0xFF, str);
+    return &sub.mission;
 }

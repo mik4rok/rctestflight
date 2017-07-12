@@ -81,6 +81,7 @@
 #include "GCS_Mavlink.h"
 #include "Parameters.h"
 #include "AP_Arming_Sub.h"
+#include "GCS_Sub.h"
 
 // libraries which are dependent on #defines in defines.h and/or config.h
 #if OPTFLOW == ENABLED
@@ -122,6 +123,7 @@
 class Sub : public AP_HAL::HAL::Callbacks {
 public:
     friend class GCS_MAVLINK_Sub;
+    friend class GCS_Sub;
     friend class Parameters;
     friend class ParametersG2;
     friend class AP_Arming_Sub;
@@ -207,11 +209,9 @@ private:
 
     // GCS selection
     AP_SerialManager serial_manager;
-    static const uint8_t num_gcs = MAVLINK_COMM_NUM_BUFFERS;
 
-    GCS_MAVLINK_Sub gcs_chan[MAVLINK_COMM_NUM_BUFFERS];
-    GCS _gcs; // avoid using this; use gcs()
-    GCS &gcs() { return _gcs; }
+    GCS_Sub _gcs; // avoid using this; use gcs()
+    GCS_Sub &gcs() { return _gcs; }
 
     // User variables
 #ifdef USERHOOK_VARIABLES
@@ -493,11 +493,8 @@ private:
 #endif
     void send_temperature(mavlink_channel_t chan);
     void send_pid_tuning(mavlink_channel_t chan);
-    void gcs_send_message(enum ap_message id);
-    void gcs_send_mission_item_reached_message(uint16_t mission_index);
     void gcs_data_stream_send(void);
     void gcs_check_input(void);
-    void gcs_send_text(MAV_SEVERITY severity, const char *str);
     void do_erase_logs(void);
     void Log_Write_Current();
     void Log_Write_Optflow();
@@ -666,7 +663,6 @@ private:
     bool ekf_position_ok();
     bool optflow_position_ok();
     bool should_log(uint32_t mask);
-    void gcs_send_text_fmt(MAV_SEVERITY severity, const char *fmt, ...);
     bool start_command(const AP_Mission::Mission_Command& cmd);
     bool verify_command(const AP_Mission::Mission_Command& cmd);
     bool verify_command_callback(const AP_Mission::Mission_Command& cmd);
