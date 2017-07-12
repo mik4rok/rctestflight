@@ -273,7 +273,7 @@ void SafeRTL_Path::_reset_pruning()
 
 void SafeRTL_Path::_zero_points_by_simplification_bitmask()
 {
-    for (int i = 0; i <= _last_index; i++) {
+    for (int i = 0; i < _simplification_bitmask.size(); i++) {
         if (!_simplification_bitmask[i]) {
             path[i] = Vector3f(0.0f, 0.0f, 0.0f);
         }
