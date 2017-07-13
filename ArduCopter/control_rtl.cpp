@@ -48,10 +48,8 @@ void Copter::rtl_run()
             break;
         case RTL_LoiterAtHome:
             if (rtl_path.land || failsafe.radio) {
-                gcs_send_text(MAV_SEVERITY_CRITICAL,"land");
                 rtl_land_start();
             }else{
-                gcs_send_text(MAV_SEVERITY_CRITICAL,"descend");
                 rtl_descent_start();
             }
             break;

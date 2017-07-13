@@ -15,7 +15,7 @@ bool Copter::safe_rtl_init(bool ignore_checks)
         wp_nav->wp_and_spline_init();
         // stay in place for now
         wp_nav->init_loiter_target(); // TODO this isn't stopping in place. am i supposed to do this? wp_nav->init_loiter_target(wp_nav->get_wp_destination());
-        // look in copter for stopping point or get_wp_destination.
+        // look in copter for stopping point or get_wp_destination. make sure to set destination to current, so that next part is not held up by reached_wp_destination()
 
         // initialise yaw to obey user parameter
         set_auto_yaw_mode(get_default_auto_yaw_mode(true));
@@ -109,8 +109,11 @@ void Copter::safe_rtl_drop_breadcrumb()
 {
     Vector3f current_pos {};
     if(ahrs.get_relative_position_NED_origin(current_pos)){ // meters from origin, NED
+        // it's important to do the cleanup first, because appending a point will reset the cleanup methods,
+        // so there will not be anything to clean up immediately after adding a point.
+        // The cleanup usually returns immediately. If it decides to actually perform the cleanup, it takes about 100us.
+        safe_rtl_path.routine_cleanup();
         safe_rtl_path.append_if_far_enough(current_pos);
-        safe_rtl_path.routine_cleanup(); // this will probably return immediately, but sometimes might take around 100us.
     }
 }
 

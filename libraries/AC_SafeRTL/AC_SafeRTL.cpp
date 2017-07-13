@@ -25,7 +25,6 @@
 *    will just have to wait for a bit until they are both done.
 */
 
-// TODO deal with issues that might arise from multithreading
 SafeRTL_Path::SafeRTL_Path() :
     accepting_new_points(true),
     _last_index(0),
@@ -35,7 +34,7 @@ SafeRTL_Path::SafeRTL_Path() :
     _pruning_min_j(0)
 {
     _simplification_bitmask = std::bitset<MAX_PATH_LEN>().set(); //initialize to 1111...
-    path[_last_index] = {0.0f, 0.0f, 0.0f};
+    path[0] = {0.0f, 0.0f, 0.0f};
 }
 
 void SafeRTL_Path::append_if_far_enough(Vector3f p)
@@ -60,6 +59,7 @@ void SafeRTL_Path::append_if_far_enough(Vector3f p)
 *   Run this regularly, in the main loop (don't worry - it runs quickly, 100us). If no cleanup is needed, it will immediately return.
 *   Otherwise, it will run a cleanup, based on info computed by the background methods, _rdp() and _detect_loops().
 *   If no cleanup is possible, this method returns false. This should be treated as an error condition.
+*   TODO this is still crashing
 */
 bool SafeRTL_Path::routine_cleanup()
 {
@@ -69,25 +69,29 @@ bool SafeRTL_Path::routine_cleanup()
         return true;
     }
 
-    bool success = false;
-
     int potential_amount_to_simplify = _simplification_bitmask.size() - _simplification_bitmask.count();
 
-    // if simplifying will remove more than 10 points, just do it (tm)
-    if (potential_amount_to_simplify > 10) {
+    // if simplifying will remove more than 10 points, just do it
+    if (potential_amount_to_simplify >= 10) {
         _zero_points_by_simplification_bitmask();
         _remove_empty_points();
-        success = true;
+        // end by resetting the state of the cleanup methods.
+        _reset_rdp();
+        _reset_pruning();
+        // gcs().send_text(MAV_SEVERITY_CRITICAL,"pruning occured");
+        return false ; // XXX should be true!!!
     }
 
     // otherwise we'll see how much we could clean up by pruning loops
     int potential_amount_to_prune = 0;
-    for (int i = 0; i < _prunable_loops.size() - 1; i++) {
+    for (uint32_t i = 0; i < _prunable_loops.size() - 1; i++) {
         // consider that loops can overlap
         // This works because input loops are sorted chronologically (by start_index) and no loops are contained within other loops
         int end = _prunable_loops[i].end_index;
         if (_prunable_loops[i+1].start_index < end) {
             end = _prunable_loops[i+1].start_index;
+        } else {
+            potential_amount_to_prune++;
         }
         potential_amount_to_prune += end - _prunable_loops[i].start_index;
     }
@@ -96,26 +100,32 @@ bool SafeRTL_Path::routine_cleanup()
     // remove all of the halfway points that are going to get added back
     potential_amount_to_prune -= _prunable_loops.size();
 
-    // if pruning could remove more than 10 points, prune loops until 10 or more points have been removed (doesn't necessarily prune all loops)
-    if (potential_amount_to_prune > 10) {
+
+    // XXX fine until here
+
+    // if pruning could remove 10+ points, prune loops until 10 or more points have been removed (doesn't necessarily prune all loops)
+    if (potential_amount_to_prune >= 10) {
         _zero_points_by_loops(10);
         _remove_empty_points();
-        success = true;
+        // end by resetting the state of the cleanup methods.
+        _reset_rdp();
+        _reset_pruning();
+        return true;
     }
 
-    // as a last resort, see if pruning and simplifying would remove 5+ points.
-    if (potential_amount_to_prune + potential_amount_to_simplify) {
+    // XXX doesn't make it to here
+
+    // as a last resort, see if pruning and simplifying together would remove 10+ points.
+    if (potential_amount_to_prune + potential_amount_to_simplify >= 10) {
         _zero_points_by_simplification_bitmask();
         _zero_points_by_loops(10);
         _remove_empty_points();
-        success = true;
+        // end by resetting the state of the cleanup methods.
+        _reset_rdp();
+        _reset_pruning();
+        return true;
     }
-
-    // end by resetting the state of the cleanup methods.
-    _reset_rdp();
-    _reset_pruning();
-
-    return success;
+    return true; // should be false
 }
 
 /**
@@ -273,7 +283,7 @@ void SafeRTL_Path::_reset_pruning()
 
 void SafeRTL_Path::_zero_points_by_simplification_bitmask()
 {
-    for (int i = 0; i < _simplification_bitmask.size(); i++) {
+    for (uint32_t i = 0; i <= _last_index; i++) {
         if (!_simplification_bitmask[i]) {
             path[i] = Vector3f(0.0f, 0.0f, 0.0f);
         }
@@ -308,7 +318,7 @@ void SafeRTL_Path::_remove_empty_points()
     int i = 0;
     int j = 0;
     int removed = 0;
-    while (++i <= _last_index) { // never removes the first item. This should obviously be {0,0,0}
+    while (++i <= _last_index) { // never removes the first item. This should always be {0,0,0}
         if (path[i] != Vector3f(0.0f, 0.0f, 0.0f)) {
             path[++j] = path[i];
         }
