@@ -27,6 +27,7 @@
 
 SafeRTL_Path::SafeRTL_Path() :
     accepting_new_points(true),
+    _active(true),
     _last_index(0),
     _simplification_complete(false),
     _pruning_complete(false),
@@ -59,7 +60,6 @@ void SafeRTL_Path::append_if_far_enough(Vector3f p)
 *   Run this regularly, in the main loop (don't worry - it runs quickly, 100us). If no cleanup is needed, it will immediately return.
 *   Otherwise, it will run a cleanup, based on info computed by the background methods, _rdp() and _detect_loops().
 *   If no cleanup is possible, this method returns false. This should be treated as an error condition.
-*   TODO this is still crashing
 */
 bool SafeRTL_Path::routine_cleanup()
 {
@@ -78,8 +78,7 @@ bool SafeRTL_Path::routine_cleanup()
         // end by resetting the state of the cleanup methods.
         _reset_rdp();
         _reset_pruning();
-        // gcs().send_text(MAV_SEVERITY_CRITICAL,"pruning occured");
-        return false ; // XXX should be true!!!
+        return true;
     }
 
     // otherwise we'll see how much we could clean up by pruning loops
@@ -100,9 +99,6 @@ bool SafeRTL_Path::routine_cleanup()
     // remove all of the halfway points that are going to get added back
     potential_amount_to_prune -= _prunable_loops.size();
 
-
-    // XXX fine until here
-
     // if pruning could remove 10+ points, prune loops until 10 or more points have been removed (doesn't necessarily prune all loops)
     if (potential_amount_to_prune >= 10) {
         _zero_points_by_loops(10);
@@ -112,8 +108,6 @@ bool SafeRTL_Path::routine_cleanup()
         _reset_pruning();
         return true;
     }
-
-    // XXX doesn't make it to here
 
     // as a last resort, see if pruning and simplifying together would remove 10+ points.
     if (potential_amount_to_prune + potential_amount_to_simplify >= 10) {
@@ -125,7 +119,9 @@ bool SafeRTL_Path::routine_cleanup()
         _reset_pruning();
         return true;
     }
-    return true; // should be false
+
+    _active = false; // Path is full and can't be cleaned up. This deactivated safertl.
+    return false;
 }
 
 /**

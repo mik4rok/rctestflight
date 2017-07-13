@@ -38,6 +38,8 @@ public:
     void rdp(uint32_t);
     void detect_loops(uint32_t);
 private:
+    bool _active; // if the path becomes too long to keep in memory, and too convoluted to be cleaned up, SafeRTL will be permanently deactivated (for the remainder of the flight)
+    bool is_active();
     // misc cleanup helper methods:
     void _reset_rdp();
     void _reset_pruning();

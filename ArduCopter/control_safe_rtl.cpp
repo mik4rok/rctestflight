@@ -107,12 +107,19 @@ void Copter::safe_rtl_land()
 */
 void Copter::safe_rtl_drop_breadcrumb()
 {
+    if(!safe_rtl_path.is_active()){
+        return;
+    }
+    // it's important to do the cleanup before adding the point, because appending a point will reset the cleanup methods,
+    // so there will not be anything to clean up immediately after adding a point.
+    // The cleanup usually returns immediately. If it decides to actually perform the cleanup, it takes about 100us.
+    if(!safe_rtl_path.routine_cleanup()){ // TODO also if gps position is no good
+        gcs().send_text(MAV_SEVERITY_CRITICAL,"SafeRTL unavailable");
+        return;
+    }
+
     Vector3f current_pos {};
     if(ahrs.get_relative_position_NED_origin(current_pos)){ // meters from origin, NED
-        // it's important to do the cleanup first, because appending a point will reset the cleanup methods,
-        // so there will not be anything to clean up immediately after adding a point.
-        // The cleanup usually returns immediately. If it decides to actually perform the cleanup, it takes about 100us.
-        safe_rtl_path.routine_cleanup();
         safe_rtl_path.append_if_far_enough(current_pos);
     }
 }
@@ -123,6 +130,10 @@ void Copter::safe_rtl_drop_breadcrumb()
 */
 void Copter::safe_rtl_background_cleanup()
 {
+    if(!safe_rtl_path.is_active()){
+        return;
+    }
+
     safe_rtl_path.detect_loops(300);
     safe_rtl_path.rdp(200);
 }
