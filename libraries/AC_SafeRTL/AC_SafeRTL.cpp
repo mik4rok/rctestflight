@@ -172,6 +172,9 @@ bool SafeRTL_Path::cleanup_ready()
     return _pruning_complete && _simplification_complete;
 }
 
+bool SafeRTL_Path::is_active(){
+    return _active;
+}
 /**
 *    Simplifies a 3D path, according to the Ramer-Douglas-Peucker algorithm.
 *    Returns the number of items which were removed. end_index is the index of the last element in the path.

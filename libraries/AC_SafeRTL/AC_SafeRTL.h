@@ -34,12 +34,12 @@ public:
     Vector3f pop_point();
     void clear_path();
     bool cleanup_ready();
+    bool is_active();
     // the two cleanup steps. These should be run regularly, maybe even by a different thread
     void rdp(uint32_t);
     void detect_loops(uint32_t);
 private:
     bool _active; // if the path becomes too long to keep in memory, and too convoluted to be cleaned up, SafeRTL will be permanently deactivated (for the remainder of the flight)
-    bool is_active();
     // misc cleanup helper methods:
     void _reset_rdp();
     void _reset_pruning();
