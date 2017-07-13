@@ -153,18 +153,23 @@ Vector3f SafeRTL_Path::get(int index)
     return path[index];
 }
 
-Vector3f SafeRTL_Path::pop_point()
+/**
+*   Returns true if the list is empty after popping this point.
+*/
+bool SafeRTL_Path::pop_point(Vector3f& point)
 {
     if(_last_index == 0){
-        return {0.0f, 0.0f, 0.0f};
+        point = path[0];
+        return true;
     }
-    return path[_last_index--];
+    point =  path[_last_index--];
+    return false;
 }
 
-void SafeRTL_Path::clear_path()
+void SafeRTL_Path::reset_path(Vector3f start)
 {
     _last_index = 0;
-    path[_last_index] = {0.0f, 0.0f, 0.0f};
+    path[_last_index] = start;
 }
 
 bool SafeRTL_Path::cleanup_ready()

@@ -21,8 +21,7 @@ bool Copter::safe_rtl_init(bool ignore_checks)
         current_pos[0] *= 100.0f;
         current_pos[1] *= 100.0f;
         current_pos[2] *= -100.0f; // invert because this next method wants cm NEU
-        // wp_nav->init_loiter_target(current_pos);
-        wp_nav->set_wp_destination(current_pos, false);
+        wp_nav->set_wp_destination(current_pos, false); // FIXME this method uses home, not origin
 
         // initialise yaw to obey user parameter
         set_auto_yaw_mode(get_default_auto_yaw_mode(true));
@@ -69,17 +68,19 @@ void Copter::safe_rtl_path_follow()
 {
     // if we are close to current target point, switch the next point to be our target.
     if(wp_nav->reached_wp_destination()){
-        Vector3f next_point = safe_rtl_path.pop_point();
-        if (next_point != Vector3f{0.0f, 0.0f, 0.0f}){
-            next_point[0] *= 100.0f;
-            next_point[1] *= 100.0f;
-            next_point[2] *= -100.0f; // invert because this next method wants cm NEU
-            // gcs_send_text_fmt(MAV_SEVERITY_NOTICE, "SafeRTL going to: %f %f %f", next_point[0], next_point[1], next_point[2]);
-            wp_nav->set_wp_destination(next_point, false);
-        } else {
-            // go to the point that is 1m above home, instead of directly home.
-            wp_nav->set_wp_destination(Vector3f{0.0f, 0.0f, 200.0f}, false); // {0,0,-2} in NED
+        Vector3f next_point {};
+        bool last_point = safe_rtl_path.pop_point(next_point);
+        next_point[0] *= 100.0f;
+        next_point[1] *= 100.0f;
+        next_point[2] *= -100.0f; // invert because this next method wants cm NEU
+        if (last_point){ // if this is the last point, we should prepare to land
+            // go to the point that is 2m above the point, instead of directly home.
+            next_point[2] -= 200.0f;
+            wp_nav->set_wp_destination(next_point, false); // FIXME this method uses home, not origin
             safe_rtl_state = SafeRTL_PreLandPosition;
+        } else {
+            // go to next point along path
+            wp_nav->set_wp_destination(next_point, false); // FIXME this method uses home, not origin
         }
     }
 

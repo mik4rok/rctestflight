@@ -31,8 +31,8 @@ public:
     bool routine_cleanup();
     Vector3f* thorough_cleanup();
     Vector3f get(int);
-    Vector3f pop_point();
-    void clear_path();
+    bool pop_point(Vector3f&);
+    void reset_path(Vector3f);
     bool cleanup_ready();
     bool is_active();
     // the two cleanup steps. These should be run regularly, maybe even by a different thread

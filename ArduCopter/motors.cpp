@@ -215,6 +215,14 @@ bool Copter::init_arm_motors(bool arming_from_gcs)
     // Start the arming delay
     ap.in_arming_delay = true;
 
+    // Reset SafeRTL. If activated, SafeRTL will try to land where we are now.
+    Vector3f current_pos {};
+    ahrs.get_relative_position_NED_origin(current_pos);
+    current_pos[0] *= 100.0f;
+    current_pos[1] *= 100.0f;
+    current_pos[2] *= -100.0f;
+    safe_rtl_path.reset_path(current_pos);
+
     // return success
     return true;
 }
@@ -272,7 +280,7 @@ void Copter::init_disarm_motors()
 void Copter::motors_output()
 {
 #if ADVANCED_FAILSAFE == ENABLED
-    // this is to allow the failsafe module to deliberately crash 
+    // this is to allow the failsafe module to deliberately crash
     // the vehicle. Only used in extreme circumstances to meet the
     // OBC rules
     if (g2.afs.should_crash_vehicle()) {
@@ -291,10 +299,10 @@ void Copter::motors_output()
 
     // cork now, so that all channel outputs happen at once
     hal.rcout->cork();
-    
+
     // update output on any aux channels, for manual passthru
     SRV_Channels::output_ch_all();
-    
+
     // check if we are performing the motor test
     if (ap.motor_test) {
         motor_test_output();
