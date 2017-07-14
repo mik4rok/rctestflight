@@ -58,7 +58,7 @@ void SafeRTL_Path::append_if_far_enough(Vector3f p)
 
 /**
 *   Run this regularly, in the main loop (don't worry - it runs quickly, 100us). If no cleanup is needed, it will immediately return.
-*   Otherwise, it will run a cleanup, based on info computed by the background methods, _rdp() and _detect_loops().
+*   Otherwise, it will run a cleanup, based on info computed by the background methods, rdp() and detect_loops().
 *   If no cleanup is possible, this method returns false. This should be treated as an error condition.
 */
 bool SafeRTL_Path::routine_cleanup()
@@ -184,7 +184,7 @@ bool SafeRTL_Path::is_active(){
 *    Simplifies a 3D path, according to the Ramer-Douglas-Peucker algorithm.
 *    Returns the number of items which were removed. end_index is the index of the last element in the path.
 */
-void SafeRTL_Path::rdp(uint32_t allowed_microseconds)
+void SafeRTL_Path::rdp()
 {
     if (_simplification_complete) {
         return;
@@ -196,7 +196,7 @@ void SafeRTL_Path::rdp(uint32_t allowed_microseconds)
     uint32_t start_time = AP_HAL::micros();
     uint8_t start_index, end_index;
     while (!_simplification_stack.is_empty()) {
-        if (AP_HAL::micros() - start_time > allowed_microseconds) {
+        if (AP_HAL::micros() - start_time > RDP_TIME) {
             return;
         }
 
@@ -234,9 +234,9 @@ void SafeRTL_Path::rdp(uint32_t allowed_microseconds)
 *   This method runs for the allotted time, and detects loops in a path. All detected loops are added to _prunable_loops,
 *   this function does not alter the path in memory.
 *
-*   Note that this method might take a bit longer than allowed_microseconds. It only stops after it's already run longer than allowed_microseconds.
+*   Note that this method might take a bit longer than LOOP_TIME. It only stops after it's already run longer.
 */
-void SafeRTL_Path::detect_loops(uint32_t allowed_microseconds)
+void SafeRTL_Path::detect_loops()
 {
     if (_pruning_complete) {
         return;
@@ -244,7 +244,7 @@ void SafeRTL_Path::detect_loops(uint32_t allowed_microseconds)
     uint32_t start_time = AP_HAL::micros();
 
     while (_pruning_current_i < _last_index - 1) {
-        if (AP_HAL::micros() - start_time > allowed_microseconds) {
+        if (AP_HAL::micros() - start_time > LOOP_TIME) {
             return;
         }
 

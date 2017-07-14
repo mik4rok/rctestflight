@@ -75,7 +75,7 @@ void Copter::safe_rtl_path_follow()
         next_point[2] *= -100.0f; // invert because this next method wants cm NEU
         if (last_point){ // if this is the last point, we should prepare to land
             // go to the point that is 2m above the point, instead of directly home.
-            next_point[2] -= 200.0f;
+            next_point[2] += 200.0f;
             wp_nav->set_wp_destination(next_point, false); // FIXME this method uses home, not origin
             safe_rtl_state = SafeRTL_PreLandPosition;
         } else {
@@ -142,6 +142,6 @@ void Copter::safe_rtl_background_cleanup()
         return;
     }
 
-    safe_rtl_path.detect_loops(300);
-    safe_rtl_path.rdp(200);
+    safe_rtl_path.rdp();
+    safe_rtl_path.detect_loops();
 }

@@ -16,6 +16,8 @@
 #define RDP_STACK_LEN 64 // the amount of memory to be allocated for the RDP algorithm to write its to do list.
 // XXX A number too small for RDP_STACK_LEN can cause a buffer overflow! The number to put here is int((s/2-1)+min(s/2, MAX_PATH_LEN-s)), where s = pow(2, floor(log(MAX_PATH_LEN)/log(2)))
 // To avoid this annoying math, a good-enough overestimate is ciel(MAX_PATH_LEN*2./3.)
+#define RDP_TIME 200
+#define LOOP_TIME 300
 
 // FIXME are inline methods preferred?
 #define HYPOT(a,b) (a-b).length()
@@ -36,8 +38,8 @@ public:
     bool cleanup_ready();
     bool is_active();
     // the two cleanup steps. These should be run regularly, maybe even by a different thread
-    void rdp(uint32_t);
-    void detect_loops(uint32_t);
+    void rdp();
+    void detect_loops();
 private:
     bool _active; // if the path becomes too long to keep in memory, and too convoluted to be cleaned up, SafeRTL will be permanently deactivated (for the remainder of the flight)
     // misc cleanup helper methods:
