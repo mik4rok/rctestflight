@@ -16,12 +16,10 @@ bool Copter::safe_rtl_init(bool ignore_checks)
         // stay in place for now
         wp_nav->init_loiter_target();
         // set current position as the target point.
-        Vector3f current_pos {};
-        ahrs.get_relative_position_NED_origin(current_pos);
-        current_pos[0] *= 100.0f;
-        current_pos[1] *= 100.0f;
-        current_pos[2] *= -100.0f; // invert because this next method wants cm NEU
-        wp_nav->set_wp_destination(current_pos, false); // FIXME this method uses home, not origin
+        Vector3f current_pos;
+        if(ahrs.get_relative_position_NED_origin(current_pos)){
+            wp_nav->set_wp_destination_NED_origin(current_pos);
+        }
 
         // initialise yaw to obey user parameter
         set_auto_yaw_mode(get_default_auto_yaw_mode(true));
@@ -68,19 +66,16 @@ void Copter::safe_rtl_path_follow()
 {
     // if we are close to current target point, switch the next point to be our target.
     if(wp_nav->reached_wp_destination()){
-        Vector3f next_point {};
+        Vector3f next_point;
         bool last_point = safe_rtl_path.pop_point(next_point);
-        next_point[0] *= 100.0f;
-        next_point[1] *= 100.0f;
-        next_point[2] *= -100.0f; // invert because this next method wants cm NEU
-        if (last_point){ // if this is the last point, we should prepare to land
-            // go to the point that is 2m above the point, instead of directly home.
-            next_point[2] += 200.0f;
-            wp_nav->set_wp_destination(next_point, false); // FIXME this method uses home, not origin
-            safe_rtl_state = SafeRTL_PreLandPosition;
-        } else {
+        if (!last_point){
             // go to next point along path
-            wp_nav->set_wp_destination(next_point, false); // FIXME this method uses home, not origin
+            wp_nav->set_wp_destination_NED_origin(next_point);
+        } else { // if this is the last point, we should prepare to land
+            // go to the point that is 2m above the point, instead of directly home.
+            next_point[2] -= 2.0f;
+            wp_nav->set_wp_destination_NED_origin(next_point);
+            safe_rtl_state = SafeRTL_PreLandPosition;
         }
     }
 
@@ -88,7 +83,6 @@ void Copter::safe_rtl_path_follow()
     motors->set_desired_spool_state(AP_Motors::DESIRED_THROTTLE_UNLIMITED);
     wp_nav->update_wpnav();
     pos_control->update_z_controller();
-    // TODO figure out heading. Should it follow that parameter? Probably best to copy behavior rtl
     attitude_control->input_euler_angle_roll_pitch_yaw(wp_nav->get_roll(), wp_nav->get_pitch(), get_auto_heading(),true, get_smoothing_gain());
 }
 
