@@ -4,7 +4,7 @@
  * Init and run calls for Safe_RTL flight mode
  *
  * This code uses the SafeRTL path that is already in memory, and feeds it into WPNav, one point at a time.
- * Once the copter is close to home, it will run a pretty standard land controller.
+ * Once the copter is close to home, it will run a standard land controller.
  */
 
 bool Copter::safe_rtl_init(bool ignore_checks)
@@ -36,21 +36,21 @@ void Copter::safe_rtl_run()
 {
     switch(safe_rtl_state){
         case SafeRTL_WaitForCleanup:
-            safe_rtl_wait_cleanup();
+            safe_rtl_wait_cleanup_run();
             break;
         case SafeRTL_PathFollow:
-            safe_rtl_path_follow();
+            safe_rtl_path_follow_run();
             break;
         case SafeRTL_PreLandPosition:
-            safe_rtl_pre_land_position();
+            safe_rtl_pre_land_position_run();
             break;
         case SafeRTL_Land:
-            safe_rtl_land();
+            rtl_land_run(); // Re-using the land method from normal rtl mode.
             break;
     }
 }
 
-void Copter::safe_rtl_wait_cleanup()
+void Copter::safe_rtl_wait_cleanup_run()
 {
     wp_nav->update_wpnav();
     pos_control->update_z_controller();
@@ -62,7 +62,7 @@ void Copter::safe_rtl_wait_cleanup()
     }
 }
 
-void Copter::safe_rtl_path_follow()
+void Copter::safe_rtl_path_follow_run()
 {
     // if we are close to current target point, switch the next point to be our target.
     if(wp_nav->reached_wp_destination()){
@@ -86,22 +86,17 @@ void Copter::safe_rtl_path_follow()
     attitude_control->input_euler_angle_roll_pitch_yaw(wp_nav->get_roll(), wp_nav->get_pitch(), get_auto_heading(),true, get_smoothing_gain());
 }
 
-void Copter::safe_rtl_pre_land_position()
+void Copter::safe_rtl_pre_land_position_run()
 {
-    // if we are close to {0,0,-2}, we are ready to land.
+    // if we are close to 2m above start point, we are ready to land.
     if(wp_nav->reached_wp_destination()){
+        rtl_land_start();
         safe_rtl_state = SafeRTL_Land;
     }
     motors->set_desired_spool_state(AP_Motors::DESIRED_THROTTLE_UNLIMITED);
     wp_nav->update_wpnav();
     pos_control->update_z_controller();
     attitude_control->input_euler_angle_roll_pitch_yaw(wp_nav->get_roll(), wp_nav->get_pitch(), get_auto_heading(),true, get_smoothing_gain());
-}
-
-void Copter::safe_rtl_land()
-{
-    // TODO do this better. Try to reuse rtl_land_init() and rtl_land_run()
-    set_mode(LAND, MODE_REASON_UNKNOWN);
 }
 
 /**

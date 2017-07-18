@@ -953,9 +953,9 @@ private:
     void rtl_compute_return_target(bool terrain_following_allowed);
     bool safe_rtl_init(bool ignore_checks);
     void safe_rtl_run();
-    void safe_rtl_wait_cleanup();
-    void safe_rtl_path_follow();
-    void safe_rtl_pre_land_position();
+    void safe_rtl_wait_cleanup_run();
+    void safe_rtl_path_follow_run();
+    void safe_rtl_pre_land_position_run();
     void safe_rtl_land();
     void safe_rtl_drop_breadcrumb();
     void safe_rtl_background_cleanup();
