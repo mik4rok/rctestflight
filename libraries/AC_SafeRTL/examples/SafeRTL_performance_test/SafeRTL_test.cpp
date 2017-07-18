@@ -6,7 +6,7 @@ SafeRTL_Path* p;
 
 void setup();
 void loop();
-void reset_path();
+void reset();
 bool check_path(const std::vector<Vector3f>&);
 
 void setup()
@@ -29,14 +29,14 @@ void loop()
     hal.console->printf("--------------------\n");
 
     // test append_if_far_enough()
-    reset_path();
+    reset();
     correct = check_path(test_path_after_adding);
     hal.console->printf("append: %s\n", correct ? "success" : "fail");
 
     // test rdp()
     reference_time = AP_HAL::micros();
-    for (int i = 0; i < 100; i++) {
-        p->rdp(100);
+    for (int i = 0; i < 1000; i++) {
+        p->rdp();
     }
     run_time = AP_HAL::micros() - reference_time;
     p->thorough_cleanup();
@@ -44,10 +44,10 @@ void loop()
     hal.console->printf("rdp:    %s, %u usec\n", correct ? "success" : "fail", run_time);
 
     // test detect_loops()
-    reset_path();
+    reset();
     reference_time = AP_HAL::micros();
-    for (int i = 0; i < 100; i++) {
-        p->detect_loops(300);
+    for (int i = 0; i < 1000; i++) {
+        p->detect_loops();
     }
     run_time = AP_HAL::micros() - reference_time;
     p->thorough_cleanup();
@@ -55,11 +55,11 @@ void loop()
     hal.console->printf("prune:  %s, %u usec\n", correct ? "success" : "fail", run_time);
 
     // test both
-    reset_path();
+    reset();
     reference_time = AP_HAL::micros();
     while (!(p->cleanup_ready())) {
-        p->rdp(200);
-        p->detect_loops(300);
+        p->rdp();
+        p->detect_loops();
     }
     run_time = AP_HAL::micros() - reference_time;
     p->thorough_cleanup();
@@ -67,9 +67,9 @@ void loop()
     hal.console->printf("both:   %s, %u usec\n", correct ? "success" : "fail", run_time);
 }
 
-void reset_path()
+void reset()
 {
-    p->reset({0.0f, 0.0f, 0.0f});
+    p->reset_path({0.0f, 0.0f, 0.0f});
     for (Vector3f v : test_path_before) {
         p->append_if_far_enough(v);
     }
