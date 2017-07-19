@@ -855,6 +855,15 @@ struct PACKED log_Beacon {
     float posz;
 };
 
+struct PACKED log_SRTL {
+    LOG_PACKET_HEADER;
+    uint64_t time_us;
+    uint8_t type;
+    float N;
+    float E;
+    float D;
+};
+
 // #endif // SBP_HW_LOGGING
 
 #define ACC_LABELS "TimeUS,SampleUS,AccX,AccY,AccZ"
@@ -982,7 +991,9 @@ Format characters in the format string for binary log messages
     { LOG_DF_MAV_STATS, sizeof(log_DF_MAV_Stats), \
       "DMS", "IIIIIBBBBBBBBBB",         "TimeMS,N,Dp,RT,RS,Er,Fa,Fmn,Fmx,Pa,Pmn,Pmx,Sa,Smn,Smx" }, \
     { LOG_BEACON_MSG, sizeof(log_Beacon), \
-      "BCN", "QBBfffffff",  "TimeUS,Health,Cnt,D0,D1,D2,D3,PosX,PosY,PosZ" }
+      "BCN", "QBBfffffff",  "TimeUS,Health,Cnt,D0,D1,D2,D3,PosX,PosY,PosZ" }, \
+    { LOG_SRTL_MSG, sizeof(log_SRTL), \
+      "SRTL", "QBfff", "TimeUS,Type,N,E,D" }
 
 // messages for more advanced boards
 #define LOG_EXTRA_STRUCTURES \
@@ -1274,6 +1285,7 @@ enum LogMessages {
     LOG_VISUALODOM_MSG,
     LOG_AOA_SSA_MSG,
     LOG_BEACON_MSG,
+    LOG_SRTL_MSG,
 };
 
 enum LogOriginType {

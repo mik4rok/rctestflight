@@ -79,6 +79,7 @@ void Copter::safe_rtl_path_follow_run()
             wp_nav->set_wp_destination_NED_origin(next_point);
             safe_rtl_state = SafeRTL_PreLandPosition;
         }
+        DataFlash.Log_Write_SRTL(DataFlash_Class::SRTL_POINT_GOTO, next_point);
     }
 
     // update controllers
@@ -93,6 +94,7 @@ void Copter::safe_rtl_pre_land_position_run()
     // if we are close to 2m above start point, we are ready to land.
     if(wp_nav->reached_wp_destination()){
         rtl_land_start();
+        DataFlash.Log_Write_SRTL(DataFlash_Class::SRTL_LAND, {0.0f, 0.0f, 0.0f});
         safe_rtl_state = SafeRTL_Land;
     }
     motors->set_desired_spool_state(AP_Motors::DESIRED_THROTTLE_UNLIMITED);
@@ -113,8 +115,9 @@ void Copter::safe_rtl_drop_breadcrumb()
     // so there will not be anything to clean up immediately after adding a point.
     // The cleanup usually returns immediately. If it decides to actually perform the cleanup, it takes about 100us.
     if(!safe_rtl_path.routine_cleanup()){ // TODO maybe give up on SafeRTL if the position has been bad for X seconds.
-        gcs().send_text(MAV_SEVERITY_WARNING,"SafeRTL unavailable");
         safe_rtl_path.deactivate();
+        DataFlash.Log_Write_SRTL(DataFlash_Class::SRTL_DEACTIVATED, {0.0f, 0.0f, 0.0f});
+        gcs().send_text(MAV_SEVERITY_WARNING,"SafeRTL unavailable");
         return;
     }
 

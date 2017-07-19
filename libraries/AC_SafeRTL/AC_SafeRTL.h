@@ -1,6 +1,7 @@
 #pragma once
 
 #include <AP_Buffer/AP_Buffer.h>
+#include <DataFlash/DataFlash.h>
 #include <AP_HAL/AP_HAL.h>
 #include <AP_Math/AP_Math.h>
 

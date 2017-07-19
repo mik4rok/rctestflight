@@ -64,6 +64,7 @@
  *  Roberto Navoni      :Library testing, Porting to VRBrain
  *  Sandro Benigno      :Camera support, MinimOSD
  *  Sandro Tognana      :PosHold flight mode
+ *  Sebastian Quilter   :SafeRTL
  *  ..and many more.
  *
  *  Code commit statistics can be found here: https://github.com/ArduPilot/ardupilot/graphs/contributors

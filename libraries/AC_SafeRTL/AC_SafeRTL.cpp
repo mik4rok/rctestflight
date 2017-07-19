@@ -44,7 +44,9 @@ void SafeRTL_Path::append_if_far_enough(Vector3f p)
         return;
     }
     if (HYPOT(p, path[_last_index]) > POSITION_DELTA) {
+        // add the breadcrumb
         path[++_last_index] = p;
+        DataFlash_Class::instance()->Log_Write_SRTL(DataFlash_Class::SRTL_POINT_ADD, p);
 
         // if cleanup algorithms are finished (And therefore not runnning), reset them
         if (_simplification_complete) {
@@ -299,7 +301,10 @@ void SafeRTL_Path::_zero_points_by_simplification_bitmask()
 {
     for (uint32_t i = 0; i <= _last_index; i++) {
         if (!_simplification_bitmask[i]) {
-            path[i] = Vector3f(0.0f, 0.0f, 0.0f);
+            if(path[i] != Vector3f(0.0f, 0.0f, 0.0f)){
+                DataFlash_Class::instance()->Log_Write_SRTL(DataFlash_Class::SRTL_POINT_SIMPLIFY, path[i]);
+                path[i] = Vector3f(0.0f, 0.0f, 0.0f);
+            }
         }
     }
 }
@@ -313,7 +318,11 @@ void SafeRTL_Path::_zero_points_by_loops(uint8_t points_to_delete)
     for (int i = 0; i < _prunable_loops.size(); i++) {
         loop l = _prunable_loops[i];
         for (int j = l.start_index; j < l.end_index; j++) {
-            path[j] = Vector3f(0.0f, 0.0f, 0.0f);
+            // zero this point if it wasn't already zeroed
+            if(path[j] != Vector3f(0.0f, 0.0f, 0.0f)){
+                DataFlash_Class::instance()->Log_Write_SRTL(DataFlash_Class::SRTL_POINT_PRUNE, path[j]);
+                path[j] = Vector3f(0.0f, 0.0f, 0.0f);
+            }
         }
         path[int((l.start_index+l.end_index)/2.0)] = l.halfway_point;
         removed_points += l.end_index - l.start_index - 1;

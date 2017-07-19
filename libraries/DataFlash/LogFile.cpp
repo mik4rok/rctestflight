@@ -1926,3 +1926,16 @@ void DataFlash_Class::Log_Write_Beacon(AP_Beacon &beacon)
     };
     WriteBlock(&pkt_beacon, sizeof(pkt_beacon));
 }
+
+void DataFlash_Class::Log_Write_SRTL(enum SRTL_Type type, Vector3f breadcrumb)
+{
+    struct log_SRTL pkt_srtl = {
+        LOG_PACKET_HEADER_INIT(LOG_SRTL_MSG),
+        time_us         : AP_HAL::micros64(),
+        type            : type,
+        N               : breadcrumb[0],
+        E               : breadcrumb[1],
+        D               : breadcrumb[2]
+    };
+    WriteBlock(&pkt_srtl, sizeof(pkt_srtl));
+}
