@@ -119,8 +119,6 @@ bool SafeRTL_Path::routine_cleanup()
         _reset_pruning();
         return true;
     }
-
-    _active = false; // Path is full and can't be cleaned up. This deactivated safertl.
     return false;
 }
 
@@ -138,6 +136,7 @@ Vector3f* SafeRTL_Path::thorough_cleanup()
 
     // apply pruning
     _zero_points_by_loops(MAX_PATH_LEN); // prune every single loop
+    // TODO don't prune every loop. instead, try out all valid permutations of deleting loops, and figure out which results in the shortest path.
 
     _remove_empty_points();
 
@@ -170,6 +169,7 @@ void SafeRTL_Path::reset_path(Vector3f start)
 {
     _last_index = 0;
     path[_last_index] = start;
+    _active = true;
 }
 
 bool SafeRTL_Path::cleanup_ready()
@@ -177,9 +177,19 @@ bool SafeRTL_Path::cleanup_ready()
     return _pruning_complete && _simplification_complete;
 }
 
-bool SafeRTL_Path::is_active(){
+bool SafeRTL_Path::is_active()
+{
     return _active;
 }
+
+/**
+*   If the copter loses GPS during it's flight, this method should be called to deactivate SafeRTL until disarmed and re-armed.
+*/
+void SafeRTL_Path::deactivate()
+{
+    _active = false;
+}
+
 /**
 *    Simplifies a 3D path, according to the Ramer-Douglas-Peucker algorithm.
 *    Returns the number of items which were removed. end_index is the index of the last element in the path.
@@ -232,7 +242,8 @@ void SafeRTL_Path::rdp()
 
 /**
 *   This method runs for the allotted time, and detects loops in a path. All detected loops are added to _prunable_loops,
-*   this function does not alter the path in memory.
+*   this function does not alter the path in memory. It works by comparing the line segment between any two sequential points
+*   to the line segment between any other two sequential points. If they get close enough, anything between them could be pruned.
 *
 *   Note that this method might take a bit longer than LOOP_TIME. It only stops after it's already run longer.
 */
@@ -244,19 +255,18 @@ void SafeRTL_Path::detect_loops()
     uint32_t start_time = AP_HAL::micros();
 
     while (_pruning_current_i < _last_index - 1) {
+        // if this method has run for long enough, exit
         if (AP_HAL::micros() - start_time > LOOP_TIME) {
             return;
         }
 
-        uint8_t j = _pruning_current_i + 2;
-        if (_pruning_min_j > j) {
-            j = _pruning_min_j;
-        }
+        // this check prevents detection of a loop-within-a-loop
+        uint8_t j = MAX(_pruning_current_i + 2, _pruning_min_j);
         while (j < _last_index) {
             dist_point dp = _segment_segment_dist(path[_pruning_current_i], path[_pruning_current_i+1], path[j], path[j+1]);
             if (dp.distance <= PRUNING_DELTA) {
                 _pruning_min_j = j;
-                // int promotion rules prevent me from using i+1 and j+1
+                // int promotion rules disallow using i+1 and j+1
                 _prunable_loops.push_back({(++_pruning_current_i)--,(++j)--,dp.point});
             }
             j++;

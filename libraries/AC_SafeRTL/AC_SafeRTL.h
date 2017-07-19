@@ -37,6 +37,7 @@ public:
     void reset_path(Vector3f);
     bool cleanup_ready();
     bool is_active();
+    void deactivate();
     // the two cleanup steps. These should be run regularly, maybe even by a different thread
     void rdp();
     void detect_loops();

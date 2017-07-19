@@ -9,8 +9,10 @@
 
 bool Copter::safe_rtl_init(bool ignore_checks)
 {
-    if (position_ok() || ignore_checks) {
+    if ((position_ok() || ignore_checks) && safe_rtl_path.is_active()) {
         safe_rtl_state = SafeRTL_WaitForCleanup;
+        // TODO if we're already close to home, maybe don't bother following the path, just land.
+
         // initialise waypoint and spline controller
         wp_nav->wp_and_spline_init();
         // stay in place for now
@@ -110,13 +112,14 @@ void Copter::safe_rtl_drop_breadcrumb()
     // it's important to do the cleanup before adding the point, because appending a point will reset the cleanup methods,
     // so there will not be anything to clean up immediately after adding a point.
     // The cleanup usually returns immediately. If it decides to actually perform the cleanup, it takes about 100us.
-    if(!safe_rtl_path.routine_cleanup()){ // TODO also if gps position is no good
-        gcs().send_text(MAV_SEVERITY_CRITICAL,"SafeRTL unavailable");
+    if(!safe_rtl_path.routine_cleanup()){ // TODO maybe give up on SafeRTL if the position has been bad for X seconds.
+        gcs().send_text(MAV_SEVERITY_WARNING,"SafeRTL unavailable");
+        safe_rtl_path.deactivate();
         return;
     }
 
     Vector3f current_pos {};
-    if(ahrs.get_relative_position_NED_origin(current_pos)){ // meters from origin, NED
+    if(position_ok() && ahrs.get_relative_position_NED_origin(current_pos)){ // meters from origin, NED
         safe_rtl_path.append_if_far_enough(current_pos);
     }
 }

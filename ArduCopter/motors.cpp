@@ -215,10 +215,14 @@ bool Copter::init_arm_motors(bool arming_from_gcs)
     // Start the arming delay
     ap.in_arming_delay = true;
 
-    // Reset SafeRTL. If activated, SafeRTL will try to land where we are now.
-    Vector3f current_pos {};
-    ahrs.get_relative_position_NED_origin(current_pos);
-    safe_rtl_path.reset_path(current_pos);
+    // Reset SafeRTL. If activated, SafeRTL will ultimately try to land where we are now.
+    Vector3f current_pos;
+    if(position_ok() && ahrs.get_relative_position_NED_origin(current_pos)){
+        safe_rtl_path.reset_path(current_pos);
+    } else {
+        gcs().send_text(MAV_SEVERITY_WARNING, "SafeRTL Unavailable");
+        safe_rtl_path.deactivate();
+    }
 
     // return success
     return true;
