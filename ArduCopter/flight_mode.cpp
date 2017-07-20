@@ -502,6 +502,7 @@ void Copter::print_flight_mode(AP_HAL::BetterStream *port, uint8_t mode)
         break;
     case SAFE_RTL:
         port->printf("SAFE_RTL");
+        break;
     default:
         port->printf("Mode(%u)", (unsigned)mode);
         break;

@@ -315,7 +315,7 @@ void SafeRTL_Path::_zero_points_by_simplification_bitmask()
 void SafeRTL_Path::_zero_points_by_loops(uint8_t points_to_delete)
 {
     int removed_points = 0;
-    for (int i = 0; i < _prunable_loops.size(); i++) {
+    for (uint32_t i = 0; i < _prunable_loops.size(); i++) {
         loop l = _prunable_loops[i];
         for (int j = l.start_index; j < l.end_index; j++) {
             // zero this point if it wasn't already zeroed

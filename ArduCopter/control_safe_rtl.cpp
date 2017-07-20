@@ -10,18 +10,24 @@
 bool Copter::safe_rtl_init(bool ignore_checks)
 {
     if ((position_ok() || ignore_checks) && safe_rtl_path.is_active()) {
-        safe_rtl_state = SafeRTL_WaitForCleanup;
-        // TODO if we're already close to home, maybe don't bother following the path, just land.
-
         // initialise waypoint and spline controller
         wp_nav->wp_and_spline_init();
-        // stay in place for now
         wp_nav->init_loiter_target();
-        // set current position as the target point.
+
         Vector3f current_pos;
-        if(ahrs.get_relative_position_NED_origin(current_pos)){
-            wp_nav->set_wp_destination_NED_origin(current_pos);
+        ahrs.get_relative_position_NED_origin(current_pos);
+        // if we're within 4m of the landing point, just skip right to pre-land-positioning
+        // otherwise, begin a normal safertl procedure from the start
+        if (HYPOT(current_pos, safe_rtl_path.get(0)) <= 4.0f) {
+            current_pos[2] -= 2.0f; // go to the point two meters above the landing spot, then start landing.
+            safe_rtl_state = SafeRTL_PreLandPosition;
+        } else {
+            safe_rtl_state = SafeRTL_WaitForCleanup;
         }
+
+        // set current position as the target point.
+        DataFlash.Log_Write_SRTL(DataFlash_Class::SRTL_POINT_GOTO, current_pos);
+        wp_nav->set_wp_destination_NED_origin(current_pos);
 
         // initialise yaw to obey user parameter
         set_auto_yaw_mode(get_default_auto_yaw_mode(true));

@@ -11,7 +11,7 @@
 #define SMALL_FLOAT  0.0000001f
 
 #define POSITION_DELTA 2.0f // how many meters to move before appending a new position to return_path
-#define PRUNING_DELTA (POSITION_DELTA * 0.99) // XXX smaller than position_delta how many meteres apart must two points be, such that we can assume that there is no obstacle between those points
+#define PRUNING_DELTA (POSITION_DELTA * 0.99) // XXX must be smaller than position_delta! How many meters apart must two points be, such that we can assume that there is no obstacle between those points
 #define RDP_EPSILON (POSITION_DELTA * 0.5)
 #define MAX_PATH_LEN 100 // the amount of memory used by safe RTL will be slightly higher than 3*8*MAX_PATH_LEN bytes. Increasing this number will improve path pruning, but will use more memory, and running a path cleanup will take longer. No longer than 255.
 #define RDP_STACK_LEN 64 // the amount of memory to be allocated for the RDP algorithm to write its to do list.
