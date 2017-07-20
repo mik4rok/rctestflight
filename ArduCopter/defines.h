@@ -226,6 +226,7 @@ enum SafeRTLState {
     SafeRTL_WaitForCleanup,
     SafeRTL_PathFollow,
     SafeRTL_PreLandPosition,
+    SafeRTL_Descend,
     SafeRTL_Land
 };
 

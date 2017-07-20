@@ -159,6 +159,7 @@ public:
         SRTL_POINT_PRUNE,
         SRTL_POINT_SIMPLIFY,
         SRTL_POINT_GOTO,
+        SRTL_DESCEND,
         SRTL_LAND,
         SRTL_DEACTIVATED
     };

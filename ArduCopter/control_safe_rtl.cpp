@@ -52,6 +52,9 @@ void Copter::safe_rtl_run()
         case SafeRTL_PreLandPosition:
             safe_rtl_pre_land_position_run();
             break;
+        case SafeRTL_Descend:
+            rtl_descent_run();
+            break;
         case SafeRTL_Land:
             rtl_land_run(); // Re-using the land method from normal rtl mode.
             break;
@@ -99,9 +102,18 @@ void Copter::safe_rtl_pre_land_position_run()
 {
     // if we are close to 2m above start point, we are ready to land.
     if(wp_nav->reached_wp_destination()){
-        rtl_land_start();
-        DataFlash.Log_Write_SRTL(DataFlash_Class::SRTL_LAND, {0.0f, 0.0f, 0.0f});
-        safe_rtl_state = SafeRTL_Land;
+        // choose descend and hold, or land based on user parameter rtl_alt_final
+        if (g.rtl_alt_final <= 0 || failsafe.radio) {
+            DataFlash.Log_Write_SRTL(DataFlash_Class::SRTL_LAND, {0.0f, 0.0f, 0.0f});
+            rtl_land_start();
+            safe_rtl_state = SafeRTL_Land;
+        }else{
+            DataFlash.Log_Write_SRTL(DataFlash_Class::SRTL_DESCEND, {0.0f, 0.0f, 0.0f});
+            rtl_path.descent_target.alt = g.rtl_alt_final;
+            rtl_descent_start();
+            safe_rtl_state = SafeRTL_Descend;
+        }
+
     }
     motors->set_desired_spool_state(AP_Motors::DESIRED_THROTTLE_UNLIMITED);
     wp_nav->update_wpnav();
