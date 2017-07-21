@@ -48,6 +48,7 @@ private:
     void _reset_rdp();
     void _reset_pruning();
     void _zero_points_by_simplification_bitmask();
+    void _remove_unacceptable_overlapping_loops();
     void _zero_points_by_loops(uint8_t);
     void _remove_empty_points();
     // _segment_segment_dist returns two things, the closest distance reached between 2 line segments, and the point exactly between them.
@@ -69,6 +70,8 @@ private:
     AP_Buffer<start_finish,RDP_STACK_LEN> _simplification_stack;
     // the result of the simplification algorithm
     std::bitset<MAX_PATH_LEN> _simplification_bitmask;
+    // everything before _simplification_clean_until has been calculated already to be un-simplify-able. This avoids recalculating a known result.
+    uint8_t _simplification_clean_until;
 
     // Pruning state
     bool _pruning_complete;
@@ -80,5 +83,7 @@ private:
         Vector3f halfway_point;
     } loop;
     // the result of the pruning algorithm
-    std::vector<loop> _prunable_loops; // TODO this might allocate memory while flying. Maybe consider a way to do this with an array or AP_Buffer
+    std::vector<loop> _prunable_loops; // TODO this might allocate memory while flying. Maybe consider a way to do this with an array or AP_Buffer. or at elast use std::list because it is better at handling deletions
+    // everything before _pruning_clean_until has been calculated already to be un-simplify-able. This avoids recalculating a known result.
+    uint8_t _pruning_clean_until;
 };

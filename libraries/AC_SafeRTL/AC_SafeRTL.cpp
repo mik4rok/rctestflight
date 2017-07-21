@@ -1,14 +1,14 @@
 #include "AC_SafeRTL.h"
 
 /*
-*    This library is used for copter's Safe Return-to-Launch feature. It stores
+*    This library is used for Copter's Safe Return-to-Launch feature. It stores
 *    "breadcrumbs" in memory, up to a certain number  of breadcrumbs have been stored,
 *    and then cleans up those breadcrumbs when space is filling up. When Safe-RTL is
 *    triggered, a more thorough cleanup occurs, and then the resulting path can
-*    be fed into a position controller to fly it.
+*    is fed into WP_NAV to fly it.
 *
 *    The cleanup consists of two parts, pruning and simplification. Pruning works
-*    by calculating the closest distance reached by the line segment between and
+*    by calculating the closest distance reached by the line segment between any
 *    two pairs of sequential points, and cuts out anything between two points
 *    when their line segments get close. This algorithm will never compare two
 *    consecutive line segments. Obviously the segments (p1,p2) and (p2,p3) will
@@ -30,9 +30,11 @@ SafeRTL_Path::SafeRTL_Path() :
     _active(true),
     _last_index(0),
     _simplification_complete(false),
+    _simplification_clean_until(0),
     _pruning_complete(false),
     _pruning_current_i(0),
-    _pruning_min_j(0)
+    _pruning_min_j(0),
+    _pruning_clean_until(0)
 {
     _simplification_bitmask = std::bitset<MAX_PATH_LEN>().set(); //initialize to 1111...
     path[0] = {0.0f, 0.0f, 0.0f};
@@ -84,22 +86,14 @@ bool SafeRTL_Path::routine_cleanup()
     }
 
     // otherwise we'll see how much we could clean up by pruning loops
+    _remove_unacceptable_overlapping_loops();
+    // FIXME simplification_bitmask and prunable_loops might change during this method. put a flag somewhere to prevent that. same for method below
+
     int potential_amount_to_prune = 0;
     for (uint32_t i = 0; i < _prunable_loops.size() - 1; i++) {
-        // consider that loops can overlap
-        // This works because input loops are sorted chronologically (by start_index) and no loops are contained within other loops
-        int end = _prunable_loops[i].end_index;
-        if (_prunable_loops[i+1].start_index < end) {
-            end = _prunable_loops[i+1].start_index;
-        } else {
-            potential_amount_to_prune++;
-        }
-        potential_amount_to_prune += end - _prunable_loops[i].start_index;
+        // add 1 at the end, because a pruned loop is always replaced by one new point.
+        potential_amount_to_prune += _prunable_loops[i].end_index - _prunable_loops[i].start_index + 1;
     }
-    // add last loop
-    potential_amount_to_prune += _prunable_loops.back().end_index - _prunable_loops.back().start_index;
-    // remove all of the halfway points that are going to get added back
-    potential_amount_to_prune -= _prunable_loops.size();
 
     // if pruning could remove 10+ points, prune loops until 10 or more points have been removed (doesn't necessarily prune all loops)
     if (potential_amount_to_prune >= 10) {
@@ -137,8 +131,8 @@ Vector3f* SafeRTL_Path::thorough_cleanup()
     _zero_points_by_simplification_bitmask();
 
     // apply pruning
+    // _remove_unacceptable_overlapping_loops();
     _zero_points_by_loops(MAX_PATH_LEN); // prune every single loop
-    // TODO don't prune every loop. instead, try out all valid permutations of deleting loops, and figure out which results in the shortest path.
 
     _remove_empty_points();
 
@@ -282,6 +276,60 @@ void SafeRTL_Path::_zero_points_by_simplification_bitmask()
                 DataFlash_Class::instance()->Log_Write_SRTL(DataFlash_Class::SRTL_POINT_SIMPLIFY, path[i]);
                 path[i] = Vector3f(0.0f, 0.0f, 0.0f);
             }
+        }
+    }
+}
+
+/**
+*   _detect_loops never returns loops-within-loops, but sometimes it does return overlapping loops.
+*   This method looks through the loops, and wherever there is a chain of overlapping loops, it
+*   either removes all even-numdered-loops or all odd-numbered loops, whichever produces the shorter path.
+*   TODO test this method thoroughly
+*/
+void SafeRTL_Path::_remove_unacceptable_overlapping_loops()
+{
+    // iterate through all loops. dont increment i here, that happens inside
+    for (uint32_t i = 0; i < _prunable_loops.size() - 1;) {
+        int chain_len = 0;
+        for(uint32_t j = i+1; j < _prunable_loops.size() - 1; j++){
+            // if two loops overlap,
+            if(_prunable_loops[j-1].end_index < _prunable_loops[j].start_index){
+                chain_len++;
+            }else{
+                i += j; // next iteration, only start looking for the next chain at an index greater than the end of this chain
+                break;
+            }
+        }
+        // if no loop was detected
+        if(chain_len == 0){
+            continue;
+        }
+        // if we got here, we have identified a chain of overlapping loops,
+        // starting with loop at index i, ending at i+chain_len
+        // now, decide if it would be better to delete even or odd loops
+        float even_dist_removed = 0;
+        float odd_dist_removed = 0;
+        // for each prunable loop in the overlapping chain
+        uint32_t k;
+        for(k = i; i <= i + chain_len; k++){
+            float loop_len = 0;
+            // for each point in said prunable loop
+            for(uint32_t l = _prunable_loops[k].start_index; l < _prunable_loops[k].end_index; l++){
+                // add the real-world distance between two sequential points in the loop
+                loop_len += HYPOT(path[l], path[l+1]);
+            }
+            // now add the real-world length of that loop to the correct counter
+            if(k%2==0){ // evens
+                even_dist_removed += loop_len;
+            } else { //odds
+                odd_dist_removed += loop_len;
+            }
+        }
+        // if we want to delete evens, but the loops starts ad odds, or if we want to delete odds but the loop starts at evens, offset deletion by one.
+        bool delete_offset = (even_dist_removed < odd_dist_removed) == (k % 2);
+        for(uint32_t l = i + delete_offset; k <= i + chain_len; k++){
+            _prunable_loops.erase(_prunable_loops.begin() + l);
+            chain_len--;
         }
     }
 }
