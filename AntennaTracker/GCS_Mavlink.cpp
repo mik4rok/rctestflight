@@ -220,10 +220,6 @@ bool GCS_MAVLINK_Tracker::try_send_message(enum ap_message id)
         tracker.send_waypoint_request(chan);
         break;
 
-    case MSG_STATUSTEXT:
-        // depreciated, use GCS_MAVLINK::send_statustext*
-        return false;
-
     case MSG_AHRS:
         CHECK_PAYLOAD_SIZE(AHRS);
         send_ahrs(tracker.ahrs);
@@ -657,12 +653,6 @@ void GCS_MAVLINK_Tracker::handleMessage(mavlink_message_t* msg)
                 break;
             }
 
-            case MAV_CMD_DO_START_MAG_CAL:
-            case MAV_CMD_DO_ACCEPT_MAG_CAL:
-            case MAV_CMD_DO_CANCEL_MAG_CAL:
-                result = tracker.compass.handle_mag_cal_command(packet);
-                break;
-
             case MAV_CMD_ACCELCAL_VEHICLE_POS:
                 result = MAV_RESULT_FAILED;
 
@@ -672,6 +662,7 @@ void GCS_MAVLINK_Tracker::handleMessage(mavlink_message_t* msg)
                 break;
 
             default:
+                result = handle_command_long_message(packet);
                 break;
         }
         mavlink_msg_command_ack_send(
@@ -902,4 +893,9 @@ void Tracker::gcs_retry_deferred(void)
 {
     gcs().send_message(MSG_RETRY_DEFERRED);
     gcs().service_statustext();
+}
+
+Compass *GCS_MAVLINK_Tracker::get_compass() const
+{
+    return &tracker.compass;
 }

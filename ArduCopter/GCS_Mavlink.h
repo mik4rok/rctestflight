@@ -19,6 +19,9 @@ protected:
     bool accept_packet(const mavlink_status_t &status, mavlink_message_t &msg) override;
 
     AP_Mission *get_mission() override;
+    AP_Rally *get_rally() const override;
+    Compass *get_compass() const override;
+    AP_ServoRelayEvents *get_servorelayevents() const override;
 
     uint8_t sysid_my_gcs() const override;
 

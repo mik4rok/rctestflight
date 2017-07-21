@@ -65,6 +65,8 @@
 #include <AP_Frsky_Telem/AP_Frsky_Telem.h>
 #include "AP_MotorsUGV.h"
 
+#include "mode.h"
+
 #include "AP_Arming.h"
 #include "compat.h"
 
@@ -76,6 +78,7 @@
 #include <AP_Stats/AP_Stats.h>                      // statistics library
 #include <AP_Beacon/AP_Beacon.h>
 #include <AP_VisualOdom/AP_VisualOdom.h>
+#include <AP_WheelEncoder/AP_WheelEncoder.h>
 
 // Configuration
 #include "config.h"
@@ -105,6 +108,13 @@ public:
     friend class AP_AdvancedFailsafe_Rover;
 #endif
     friend class GCS_Rover;
+    friend class Mode;
+    friend class ModeAuto;
+    friend class ModeGuided;
+    friend class ModeHold;
+    friend class ModeSteering;
+    friend class ModeManual;
+    friend class ModeRTL;
 
     Rover(void);
 
@@ -150,7 +160,7 @@ private:
     AP_Baro barometer;
     Compass compass;
     AP_InertialSensor ins;
-    RangeFinder sonar { serial_manager, ROTATION_NONE };
+    RangeFinder rangefinder { serial_manager, ROTATION_NONE };
     AP_Button button;
 
     // flight modes convenience array
@@ -158,9 +168,9 @@ private:
 
     // Inertial Navigation EKF
 #if AP_AHRS_NAVEKF_AVAILABLE
-    NavEKF2 EKF2{&ahrs, barometer, sonar};
-    NavEKF3 EKF3{&ahrs, barometer, sonar};
-    AP_AHRS_NavEKF ahrs {ins, barometer, gps, sonar, EKF2, EKF3};
+    NavEKF2 EKF2{&ahrs, barometer, rangefinder};
+    NavEKF3 EKF3{&ahrs, barometer, rangefinder};
+    AP_AHRS_NavEKF ahrs {ins, barometer, gps, rangefinder, EKF2, EKF3};
 #else
     AP_AHRS_DCM ahrs {ins, barometer, gps};
 #endif
@@ -220,10 +230,9 @@ private:
     // if USB is connected
     bool usb_connected;
 
-    // Radio
     // This is the state of the flight control system
-    // There are multiple states defined such as MANUAL, FBW-A, AUTO
-    enum mode control_mode;
+    // There are multiple states defined such as MANUAL, AUTO, ...
+    Mode *control_mode;
 
     // Used to maintain the state of the previous control switch position
     // This is set to -1 when we need to re-read the switch
@@ -262,9 +271,6 @@ private:
     // ground speed error in m/s
     float groundspeed_error;
 
-    // 0-(throttle_max - throttle_cruise) : throttle nudge in Auto mode using top 1/2 of throttle stick travel
-    int16_t     throttle_nudge;
-
     // receiver RSSI
     uint8_t receiver_rssi;
 
@@ -276,15 +282,12 @@ private:
         // have we detected an obstacle?
         uint8_t detected_count;
         float turn_angle;
-        uint16_t sonar1_distance_cm;
-        uint16_t sonar2_distance_cm;
+        uint16_t rangefinder1_distance_cm;
+        uint16_t rangefinder2_distance_cm;
 
         // time when we last detected an obstacle, in milliseconds
         uint32_t detected_time_ms;
     } obstacle;
-
-    // this is set to true when auto has been triggered to start
-    bool auto_triggered;
 
     // Ground speed
     // The amount current ground speed is below min ground speed.  meters per second
@@ -308,10 +311,6 @@ private:
     uint32_t control_sensors_present;
     uint32_t control_sensors_enabled;
     uint32_t control_sensors_health;
-
-    // Navigation control variables
-    // The instantaneous desired lateral acceleration in m/s/s
-    float lateral_acceleration;
 
     // Waypoint distances
     // Distance between rover and next waypoint.  Meters
@@ -357,7 +356,7 @@ private:
     // Performance monitoring
     // Timer used to accrue data and trigger recording of the performance monitoring log message
     int32_t perf_mon_timer;
-    // The maximum main loop execution time recorded in the current performance monitoring interval
+    // The maximum main loop execution time, in microseconds, recorded in the current performance monitoring interval
     uint32_t G_Dt_max;
 
     // System Timers
@@ -398,12 +397,6 @@ private:
     // time that rudder/steering arming has been running
     uint32_t rudder_arm_timer;
 
-    // true if we are in an auto-throttle mode, which means
-    // we need to run the speed controller
-    bool auto_throttle_mode;
-
-    // Guided control
-    GuidedMode guided_mode;             // controls which controller is run (waypoint or velocity)
     // Store parameters from Guided msg
     struct {
       float turn_angle;          // target heading in centi-degrees
@@ -417,6 +410,18 @@ private:
 
     // last visual odometry update time
     uint32_t visual_odom_last_update_ms;
+
+    // True when we are doing motor test
+    bool motor_test;
+
+    ModeInitializing mode_initializing;
+    ModeHold mode_hold;
+    ModeManual mode_manual;
+    ModeGuided mode_guided;
+    ModeAuto mode_auto;
+    ModeLearning mode_learning;
+    ModeSteering mode_steering;
+    ModeRTL mode_rtl;
 
 private:
     // private member functions
@@ -454,13 +459,17 @@ private:
     void gcs_update(void);
     void gcs_retry_deferred(void);
 
+    Mode *control_mode_from_num(enum mode num);
+    bool set_mode(Mode &mode);
+    bool mavlink_set_mode(uint8_t mode);
+
     void do_erase_logs(void);
     void Log_Write_Performance();
     void Log_Write_Steering();
     void Log_Write_Startup(uint8_t type);
     void Log_Write_Control_Tuning();
     void Log_Write_Nav_Tuning();
-    void Log_Write_Sonar();
+    void Log_Write_Rangefinder();
     void Log_Write_Beacon();
     void Log_Write_Current();
     void Log_Write_Attitude();
@@ -469,17 +478,14 @@ private:
     void Log_Write_Baro(void);
     void Log_Write_Home_And_Origin();
     void Log_Write_Vehicle_Startup_Messages();
+    void Log_Write_GuidedTarget(uint8_t target_type, const Vector3f& pos_target, const Vector3f& vel_target);
+    void Log_Write_WheelEncoder();
     void Log_Read(uint16_t log_num, uint16_t start_page, uint16_t end_page);
     void log_init(void);
-    void start_logging();
     void Log_Arm_Disarm();
 
     void load_parameters(void);
-    bool auto_check_trigger(void);
     bool use_pivot_steering(void);
-    void calc_throttle(float target_speed);
-    void calc_lateral_acceleration();
-    void calc_nav_steer();
     void set_servos(void);
     void set_auto_WP(const struct Location& loc);
     void set_guided_WP(const struct Location& loc);
@@ -519,33 +525,21 @@ private:
     void trim_control_surfaces();
     void trim_radio();
     void init_barometer(bool full_calibration);
-    void init_sonar(void);
+    void init_rangefinder(void);
     void init_beacon();
     void update_beacon();
     void init_visual_odom();
     void update_visual_odom();
+    void update_wheel_encoder();
     void read_battery(void);
     void read_receiver_rssi(void);
-    void read_sonars(void);
-    void report_batt_monitor();
-    void report_radio();
-    void report_gains();
-    void report_throttle();
-    void report_compass();
-    void report_modes();
-    void print_radio_values();
-    void print_switch(uint8_t p, uint8_t m);
-    void print_done();
-    void print_blanks(int num);
-    void print_divider(void);
-    int8_t radio_input_switch(void);
+    void read_rangefinders(void);
     void zero_eeprom(void);
     void print_enabled(bool b);
     void init_ardupilot();
     void startup_ground(void);
     void set_reverse(bool reverse);
-    void set_mode(enum mode mode);
-    bool mavlink_set_mode(uint8_t mode);
+
     void failsafe_trigger(uint8_t failsafe_type, bool on);
     void startup_INS_ground(void);
     void update_notify();
@@ -587,8 +581,6 @@ private:
     bool do_yaw_rotation();
     void nav_set_speed();
     bool in_stationary_loiter(void);
-    void set_loiter_active(const AP_Mission::Mission_Command& cmd);
-    void Log_Write_GuidedTarget(uint8_t target_type, const Vector3f& pos_target, const Vector3f& vel_target);
     void crash_check();
 #if ADVANCED_FAILSAFE == ENABLED
     void afs_fs_check(void);
@@ -620,13 +612,18 @@ public:
     int8_t test_gps(uint8_t argc, const Menu::arg *argv);
     int8_t test_ins(uint8_t argc, const Menu::arg *argv);
     int8_t test_mag(uint8_t argc, const Menu::arg *argv);
-    int8_t test_sonar(uint8_t argc, const Menu::arg *argv);
+    int8_t test_rangefinder(uint8_t argc, const Menu::arg *argv);
 #if CONFIG_HAL_BOARD == HAL_BOARD_PX4 || CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
     int8_t test_shell(uint8_t argc, const Menu::arg *argv);
 #endif
 
     void dataflash_periodic(void);
     void update_soft_armed();
+    // Motor test
+    void motor_test_output();
+    bool mavlink_motor_test_check(mavlink_channel_t chan, bool check_rc, uint8_t motor_seq, uint8_t throttle_type, int16_t throttle_value);
+    uint8_t mavlink_motor_test_start(mavlink_channel_t chan, uint8_t motor_seq, uint8_t throttle_type, int16_t throttle_value, float timeout_sec);
+    void motor_test_stop();
 };
 
 #define MENU_FUNC(func) FUNCTOR_BIND(&rover, &Rover::func, int8_t, uint8_t, const Menu::arg *)

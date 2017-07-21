@@ -560,10 +560,6 @@ bool GCS_MAVLINK_Plane::try_send_message(enum ap_message id)
         queued_waypoint_send();
         break;
 
-    case MSG_STATUSTEXT:
-        // depreciated, use GCS_MAVLINK::send_statustext*
-        return false;
-
     case MSG_FENCE_STATUS:
 #if GEOFENCE_ENABLED == ENABLED
         CHECK_PAYLOAD_SIZE(FENCE_STATUS);
@@ -1088,10 +1084,6 @@ void GCS_MAVLINK_Plane::handleMessage(mavlink_message_t* msg)
             }
             break;
 
-        case MAV_CMD_START_RX_PAIR:
-            result = handle_rc_bind(packet);
-            break;
-
         case MAV_CMD_NAV_LOITER_UNLIM:
             plane.set_mode(LOITER, MODE_REASON_GCS_COMMAND);
             result = MAV_RESULT_ACCEPTED;
@@ -1260,23 +1252,6 @@ void GCS_MAVLINK_Plane::handleMessage(mavlink_message_t* msg)
             plane.in_calibration = false;
             break;
 
-        case MAV_CMD_PREFLIGHT_SET_SENSOR_OFFSETS:
-            {
-                uint8_t compassNumber = -1;
-                if (is_equal(packet.param1, 2.0f)) {
-                    compassNumber = 0;
-                } else if (is_equal(packet.param1, 5.0f)) {
-                    compassNumber = 1;
-                } else if (is_equal(packet.param1, 6.0f)) {
-                    compassNumber = 2;
-                }
-                if (compassNumber != (uint8_t) -1) {
-                    plane.compass.set_and_save_offsets(compassNumber, packet.param2, packet.param3, packet.param4);
-                    result = MAV_RESULT_ACCEPTED;
-                }
-                break;
-            }
-
         case MAV_CMD_COMPONENT_ARM_DISARM:
             if (is_equal(packet.param1,1.0f)) {
                 // run pre_arm_checks and arm_checks and display failures
@@ -1327,30 +1302,6 @@ void GCS_MAVLINK_Plane::handleMessage(mavlink_message_t* msg)
 
             default:
                 result = MAV_RESULT_UNSUPPORTED;
-            }
-            break;
-
-        case MAV_CMD_DO_SET_SERVO:
-            if (plane.ServoRelayEvents.do_set_servo(packet.param1, packet.param2)) {
-                result = MAV_RESULT_ACCEPTED;
-            }
-            break;
-
-        case MAV_CMD_DO_REPEAT_SERVO:
-            if (plane.ServoRelayEvents.do_repeat_servo(packet.param1, packet.param2, packet.param3, packet.param4*1000)) {
-                result = MAV_RESULT_ACCEPTED;
-            }
-            break;
-
-        case MAV_CMD_DO_SET_RELAY:
-            if (plane.ServoRelayEvents.do_set_relay(packet.param1, packet.param2)) {
-                result = MAV_RESULT_ACCEPTED;
-            }
-            break;
-
-        case MAV_CMD_DO_REPEAT_RELAY:
-            if (plane.ServoRelayEvents.do_repeat_relay(packet.param1, packet.param2, packet.param3*1000)) {
-                result = MAV_RESULT_ACCEPTED;
             }
             break;
 
@@ -1468,12 +1419,6 @@ void GCS_MAVLINK_Plane::handleMessage(mavlink_message_t* msg)
             plane.autotune_enable(!is_zero(packet.param1));
             break;
 
-        case MAV_CMD_DO_START_MAG_CAL:
-        case MAV_CMD_DO_ACCEPT_MAG_CAL:
-        case MAV_CMD_DO_CANCEL_MAG_CAL:
-            result = plane.compass.handle_mag_cal_command(packet);
-            break;
-
 #if PARACHUTE == ENABLED
         case MAV_CMD_DO_PARACHUTE:
             // configure or release parachute
@@ -1540,6 +1485,7 @@ void GCS_MAVLINK_Plane::handleMessage(mavlink_message_t* msg)
             break;
             
         default:
+            result = handle_command_long_message(packet);
             break;
         }
 
@@ -1604,60 +1550,6 @@ void GCS_MAVLINK_Plane::handleMessage(mavlink_message_t* msg)
         break;
     }
 #endif // GEOFENCE_ENABLED
-
-    // receive a rally point from GCS and store in EEPROM
-    case MAVLINK_MSG_ID_RALLY_POINT: {
-        mavlink_rally_point_t packet;
-        mavlink_msg_rally_point_decode(msg, &packet);
-        
-        if (packet.idx >= plane.rally.get_rally_total() || 
-            packet.idx >= plane.rally.get_rally_max()) {
-            send_text(MAV_SEVERITY_WARNING,"Bad rally point message ID");
-            break;
-        }
-
-        if (packet.count != plane.rally.get_rally_total()) {
-            send_text(MAV_SEVERITY_WARNING,"Bad rally point message count");
-            break;
-        }
-
-        // sanity check location
-        if (!check_latlng(packet.lat, packet.lng)) {
-            break;
-        }
-
-        RallyLocation rally_point;
-        rally_point.lat = packet.lat;
-        rally_point.lng = packet.lng;
-        rally_point.alt = packet.alt;
-        rally_point.break_alt = packet.break_alt;
-        rally_point.land_dir = packet.land_dir;
-        rally_point.flags = packet.flags;
-        plane.rally.set_rally_point_with_index(packet.idx, rally_point);
-        break;
-    }
-
-    //send a rally point to the GCS
-    case MAVLINK_MSG_ID_RALLY_FETCH_POINT: {
-        mavlink_rally_fetch_point_t packet;
-        mavlink_msg_rally_fetch_point_decode(msg, &packet);
-        if (packet.idx > plane.rally.get_rally_total()) {
-            send_text(MAV_SEVERITY_WARNING, "Bad rally point index");
-            break;
-        }
-        RallyLocation rally_point;
-        if (!plane.rally.get_rally_point_with_index(packet.idx, rally_point)) {
-            send_text(MAV_SEVERITY_WARNING, "Failed to set rally point");
-            break;
-        }
-
-        mavlink_msg_rally_point_send_buf(msg,
-                                         chan, msg->sysid, msg->compid, packet.idx, 
-                                         plane.rally.get_rally_total(), rally_point.lat, rally_point.lng, 
-                                         rally_point.alt, rally_point.break_alt, rally_point.land_dir, 
-                                         rally_point.flags);
-        break;
-    }    
 
     case MAVLINK_MSG_ID_PARAM_SET:
     {
@@ -2100,6 +1992,11 @@ bool GCS_MAVLINK_Plane::accept_packet(const mavlink_status_t &status, mavlink_me
     return (msg.sysid == plane.g.sysid_my_gcs);
 }
 
+Compass *GCS_MAVLINK_Plane::get_compass() const
+{
+    return &plane.compass;
+}
+
 AP_Mission *GCS_MAVLINK_Plane::get_mission()
 {
     return &plane.mission;
@@ -2112,4 +2009,14 @@ void GCS_MAVLINK_Plane::handle_mission_set_current(AP_Mission &mission, mavlink_
     if (plane.control_mode == AUTO && plane.mission.state() == AP_Mission::MISSION_STOPPED) {
         plane.mission.resume();
     }
+}
+
+AP_ServoRelayEvents *GCS_MAVLINK_Plane::get_servorelayevents() const
+{
+    return &plane.ServoRelayEvents;
+}
+
+AP_Rally *GCS_MAVLINK_Plane::get_rally() const
+{
+    return &plane.rally;
 }

@@ -101,8 +101,7 @@ public:
 
     void setVehicle_Startup_Log_Writer(vehicle_startup_message_Log_Writer writer);
 
-    /* poke backends to start if they're not already started */
-    void StartUnstartedLogging(void);
+    void PrepForArming();
 
     void EnableWrites(bool enable) { _writes_enabled = enable; }
     bool WritesEnabled() const { return _writes_enabled; }
@@ -335,6 +334,8 @@ private:
 
     // start page of log data
     uint16_t _log_data_page;
+
+    int8_t _log_sending_chan = -1;
 
     bool should_handle_log_message();
     void handle_log_message(class GCS_MAVLINK &, mavlink_message_t *msg);

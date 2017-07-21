@@ -16,6 +16,7 @@
 #include <AP_Avoidance/AP_Avoidance.h>
 #include <AP_HAL/utility/RingBuffer.h>
 #include <AP_Frsky_Telem/AP_Frsky_Telem.h>
+#include <AP_ServoRelayEvents/AP_ServoRelayEvents.h>
 
 // check if a message will fit in the payload space available
 #define HAVE_PAYLOAD_SPACE(chan, id) (comm_get_txspace(chan) >= GCS_MAVLINK::packet_overhead_chan(chan)+MAVLINK_MSG_ID_ ## id ## _LEN)
@@ -46,7 +47,6 @@ enum ap_message {
     MSG_SERVO_OUT,
     MSG_NEXT_WAYPOINT,
     MSG_NEXT_PARAM,
-    MSG_STATUSTEXT,
     MSG_LIMITS_STATUS,
     MSG_FENCE_STATUS,
     MSG_AHRS,
@@ -218,6 +218,9 @@ protected:
     // enforcement of GCS sysid
     virtual bool accept_packet(const mavlink_status_t &status, mavlink_message_t &msg) { return true; }
     virtual AP_Mission *get_mission() = 0;
+    virtual AP_Rally *get_rally() const = 0;
+    virtual Compass *get_compass() const = 0;
+    virtual AP_ServoRelayEvents *get_servorelayevents() const = 0;
 
     bool            waypoint_receiving; // currently receiving
     // the following two variables are only here because of Tracker
@@ -248,6 +251,10 @@ protected:
     void handle_param_request_list(mavlink_message_t *msg);
     void handle_param_request_read(mavlink_message_t *msg);
 
+    void handle_common_rally_message(mavlink_message_t *msg);
+    void handle_rally_fetch_point(mavlink_message_t *msg);
+    void handle_rally_point(mavlink_message_t *msg);
+
     void handle_gimbal_report(AP_Mount &mount, mavlink_message_t *msg) const;
     void handle_radio_status(mavlink_message_t *msg, DataFlash_Class &dataflash, bool log_radio);
     void handle_serial_control(mavlink_message_t *msg, AP_GPS &gps);
@@ -257,7 +264,7 @@ protected:
     void handle_common_message(mavlink_message_t *msg);
     void handle_setup_signing(const mavlink_message_t *msg);
     uint8_t handle_preflight_reboot(const mavlink_command_long_t &packet, bool disable_overrides);
-    uint8_t handle_rc_bind(const mavlink_command_long_t &packet);
+    MAV_RESULT handle_rc_bind(const mavlink_command_long_t &packet);
 
     void handle_device_op_read(mavlink_message_t *msg);
     void handle_device_op_write(mavlink_message_t *msg);
@@ -268,11 +275,17 @@ protected:
     bool telemetry_delayed() const;
     virtual uint32_t telem_delay() const = 0;
 
+    MAV_RESULT handle_command_preflight_set_sensor_offsets(const mavlink_command_long_t &packet);
+    MAV_RESULT handle_command_mag_cal(const mavlink_command_long_t &packet);
+    MAV_RESULT handle_command_long_message(mavlink_command_long_t &packet);
+
 private:
 
     float       adjust_rate_for_stream_trigger(enum streams stream_num);
 
     virtual void        handleMessage(mavlink_message_t * msg) = 0;
+
+    MAV_RESULT handle_servorelay_message(mavlink_command_long_t &packet);
 
     /// The stream we are communicating over
     AP_HAL::UARTDriver *_port;

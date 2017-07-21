@@ -281,6 +281,11 @@ void AP_GPS::init(const AP_SerialManager& serial_manager)
     // Initialise class variables used to do GPS blending
     _omega_lpf = 1.0f / constrain_float(_blend_tc, 5.0f, 30.0f);
 
+    // prep the state instance fields
+    for (uint8_t i = 0; i < GPS_MAX_INSTANCES; i++) {
+        state[i].instance = i;
+    }
+
     // sanity check update rate
     for (uint8_t i=0; i<GPS_MAX_RECEIVERS; i++) {
         if (_rate_ms[i] <= 0 || _rate_ms[i] > GPS_MAX_RATE_MS) {
@@ -399,6 +404,10 @@ void AP_GPS::detect_instance(uint8_t instance)
     struct detect_state *dstate = &detect_state[instance];
     uint32_t now = AP_HAL::millis();
 
+    state[instance].status = NO_GPS;
+    state[instance].hdop = GPS_UNKNOWN_DOP;
+    state[instance].vdop = GPS_UNKNOWN_DOP;
+    
     switch (_type[instance]) {
 #if CONFIG_HAL_BOARD == HAL_BOARD_QURT
     case GPS_TYPE_QURT:
@@ -455,11 +464,6 @@ void AP_GPS::detect_instance(uint8_t instance)
         // UART not available
         return;
     }
-
-    state[instance].instance = instance;
-    state[instance].status = NO_GPS;
-    state[instance].hdop = GPS_UNKNOWN_DOP;
-    state[instance].vdop = GPS_UNKNOWN_DOP;
 
     // all remaining drivers automatically cycle through baud rates to detect
     // the correct baud rate, and should have the selected baud broadcast
@@ -618,7 +622,6 @@ void AP_GPS::update_instance(uint8_t instance)
             delete drivers[instance];
             drivers[instance] = nullptr;
             memset(&state[instance], 0, sizeof(state[instance]));
-            state[instance].instance = instance;
             state[instance].status = NO_GPS;
             state[instance].hdop = GPS_UNKNOWN_DOP;
             state[instance].vdop = GPS_UNKNOWN_DOP;
@@ -897,8 +900,8 @@ void AP_GPS::send_mavlink_gps2_raw(mavlink_channel_t chan)
         ground_speed(1)*100,  // cm/s
         ground_course(1)*100, // 1/100 degrees,
         num_sats(1),
-        0,
-        0);
+        rtk_num_sats(1),
+        rtk_age_ms(1));
 }
 
 void AP_GPS::send_mavlink_gps_rtk(mavlink_channel_t chan)

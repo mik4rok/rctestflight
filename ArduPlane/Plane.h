@@ -735,7 +735,7 @@ private:
         // Timer used to accrue data and trigger recording of the performanc monitoring log message
         uint32_t start_ms;
 
-        // The maximum and minimum main loop execution time recorded in the current performance monitoring interval
+        // The maximum and minimum main loop execution time, in microseconds, recorded in the current performance monitoring interval
         uint32_t G_Dt_max;
         uint32_t G_Dt_min;
 
@@ -847,7 +847,6 @@ private:
     void Log_Write_Vehicle_Startup_Messages();
     void Log_Write_AOA_SSA();
     void Log_Read(uint16_t log_num, int16_t start_page, int16_t end_page);
-    void start_logging();
 
     void load_parameters(void);
     void adjust_altitude_target();
