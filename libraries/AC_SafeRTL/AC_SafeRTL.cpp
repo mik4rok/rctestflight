@@ -149,11 +149,6 @@ Vector3f* SafeRTL_Path::thorough_cleanup()
     return path;
 }
 
-Vector3f SafeRTL_Path::get(int index)
-{
-    return path[index];
-}
-
 /**
 *   Returns true if the list is empty after popping this point.
 */
@@ -172,24 +167,6 @@ void SafeRTL_Path::reset_path(Vector3f start)
     _last_index = 0;
     path[_last_index] = start;
     _active = true;
-}
-
-bool SafeRTL_Path::cleanup_ready()
-{
-    return _pruning_complete && _simplification_complete;
-}
-
-bool SafeRTL_Path::is_active()
-{
-    return _active;
-}
-
-/**
-*   If the copter loses GPS during it's flight, this method should be called to deactivate SafeRTL until disarmed and re-armed.
-*/
-void SafeRTL_Path::deactivate()
-{
-    _active = false;
 }
 
 /**

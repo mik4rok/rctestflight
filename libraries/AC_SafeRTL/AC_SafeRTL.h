@@ -33,12 +33,12 @@ public:
     void append_if_far_enough(Vector3f);
     bool routine_cleanup();
     Vector3f* thorough_cleanup();
-    Vector3f get(int);
+    Vector3f get(int index) { return path[index]; }
     bool pop_point(Vector3f&);
     void reset_path(Vector3f);
-    bool cleanup_ready();
-    bool is_active();
-    void deactivate();
+    bool cleanup_ready() { return _pruning_complete && _simplification_complete; }
+    bool is_active() { return _active; }
+    void deactivate() { _active = false; } // If the copter loses GPS during it's flight, this method should be called to deactivate SafeRTL until disarmed and re-armed.
     // the two cleanup steps. These should be run regularly, maybe even by a different thread
     void rdp();
     void detect_loops();
