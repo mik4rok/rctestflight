@@ -69,7 +69,7 @@ void loop()
 
 void reset()
 {
-    p->reset_path({0.0f, 0.0f, 0.0f});
+    p->reset_path(Vector3f{0.0f, 0.0f, 0.0f});
     for (Vector3f v : test_path_before) {
         p->append_if_far_enough(v);
     }

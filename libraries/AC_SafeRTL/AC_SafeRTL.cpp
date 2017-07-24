@@ -131,7 +131,7 @@ Vector3f* SafeRTL_Path::thorough_cleanup()
     _zero_points_by_simplification_bitmask();
 
     // apply pruning
-    // _remove_unacceptable_overlapping_loops();
+    _remove_unacceptable_overlapping_loops();
     _zero_points_by_loops(MAX_PATH_LEN); // prune every single loop
 
     _remove_empty_points();
@@ -161,6 +161,8 @@ void SafeRTL_Path::reset_path(Vector3f start)
     _last_index = 0;
     path[_last_index] = start;
     _active = true;
+    _simplification_clean_until = 0;
+    _pruning_clean_until = 0;
 }
 
 /**
@@ -187,6 +189,11 @@ void SafeRTL_Path::rdp()
         _simplification_stack.pop_front(tmp);
         start_index = tmp.start;
         end_index = tmp.finish;
+
+        // if we've already verified that everything before here is clean
+        if(tmp.finish <= _simplification_clean_until){
+            continue;
+        }
 
         float max_dist = 0.0f;
         uint8_t index = start_index;
@@ -263,8 +270,8 @@ void SafeRTL_Path::_reset_rdp()
 void SafeRTL_Path::_reset_pruning()
 {
     _pruning_complete = false;
-    _pruning_current_i = 0;
-    _pruning_min_j = 0;
+    _pruning_current_i = _pruning_clean_until;
+    _pruning_min_j = _pruning_clean_until+2;
     _prunable_loops.clear();
 }
 
@@ -272,6 +279,7 @@ void SafeRTL_Path::_zero_points_by_simplification_bitmask()
 {
     for (uint32_t i = 0; i <= _last_index; i++) {
         if (!_simplification_bitmask[i]) {
+            _simplification_clean_until = MIN(_simplification_clean_until, i-1);
             if(path[i] != Vector3f(0.0f, 0.0f, 0.0f)){
                 DataFlash_Class::instance()->Log_Write_SRTL(DataFlash_Class::SRTL_POINT_SIMPLIFY, path[i]);
                 path[i] = Vector3f(0.0f, 0.0f, 0.0f);
@@ -342,6 +350,7 @@ void SafeRTL_Path::_zero_points_by_loops(uint8_t points_to_delete)
     int removed_points = 0;
     for (uint32_t i = 0; i < _prunable_loops.size(); i++) {
         loop l = _prunable_loops[i];
+        _pruning_clean_until = MIN(_pruning_clean_until, l.start_index-1);
         for (int j = l.start_index; j < l.end_index; j++) {
             // zero this point if it wasn't already zeroed
             if(path[j] != Vector3f(0.0f, 0.0f, 0.0f)){
