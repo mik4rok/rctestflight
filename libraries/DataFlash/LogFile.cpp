@@ -1229,7 +1229,7 @@ void DataFlash_Class::Log_Write_EKF3(AP_AHRS_NavEKF &ahrs, bool optFlowEnabled)
         q4 : quat.q4
     };
     WriteBlock(&pktq1, sizeof(pktq1));
-    
+
     // log innovations for the second IMU if enabled
     if (ahrs.get_NavEKF3().activeCores() >= 2) {
         // Write 6th EKF packet
@@ -1342,7 +1342,7 @@ void DataFlash_Class::Log_Write_EKF3(AP_AHRS_NavEKF &ahrs, bool optFlowEnabled)
             q3 : quat.q3,
             q4 : quat.q4
         };
-        WriteBlock(&pktq2, sizeof(pktq2));        
+        WriteBlock(&pktq2, sizeof(pktq2));
     }
     // write range beacon fusion debug packet if the range value is non-zero
     uint8_t ID;
@@ -1924,6 +1924,44 @@ void DataFlash_Class::Log_Write_Beacon(AP_Beacon &beacon)
        posz            : pos.z
     };
     WriteBlock(&pkt_beacon, sizeof(pkt_beacon));
+}
+
+// Write proximity sensor distances
+void DataFlash_Class::Log_Write_Proximity(AP_Proximity &proximity)
+{
+    // exit immediately if not enabled
+    if (proximity.get_status() == AP_Proximity::Proximity_NotConnected) {
+        return;
+    }
+
+    AP_Proximity::Proximity_Distance_Array dist_array {};
+    proximity.get_horizontal_distances(dist_array);
+
+    float dist_up;
+    if (!proximity.get_upward_distance(dist_up)) {
+        dist_up = 0.0f;
+    }
+
+    float close_ang = 0.0f, close_dist = 0.0f;
+    proximity.get_closest_object(close_ang, close_dist);
+
+    struct log_Proximity pkt_proximity = {
+            LOG_PACKET_HEADER_INIT(LOG_PROXIMITY_MSG),
+            time_us         : AP_HAL::micros64(),
+            health          : (uint8_t)proximity.get_status(),
+            dist0           : dist_array.distance[0],
+            dist45          : dist_array.distance[1],
+            dist90          : dist_array.distance[2],
+            dist135         : dist_array.distance[3],
+            dist180         : dist_array.distance[4],
+            dist225         : dist_array.distance[5],
+            dist270         : dist_array.distance[6],
+            dist315         : dist_array.distance[7],
+            distup          : dist_up,
+            closest_angle   : close_ang,
+            closest_dist    : close_dist
+    };
+    WriteBlock(&pkt_proximity, sizeof(pkt_proximity));
 }
 
 void DataFlash_Class::Log_Write_SRTL(enum SRTL_Type type, Vector3f breadcrumb)

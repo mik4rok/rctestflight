@@ -663,8 +663,8 @@ struct PACKED log_GPS_RAWS {
     uint8_t trkStat;
 };
 
-struct PACKED log_GPS_SBF_EVENT {  
-	LOG_PACKET_HEADER; 
+struct PACKED log_GPS_SBF_EVENT {
+	LOG_PACKET_HEADER;
 	uint64_t time_us;
 	uint32_t TOW;
 	uint16_t WNc;
@@ -682,7 +682,7 @@ struct PACKED log_GPS_SBF_EVENT {
 
 struct PACKED log_Esc {
     LOG_PACKET_HEADER;
-    uint64_t time_us;     
+    uint64_t time_us;
     int16_t rpm;
     int16_t voltage;
     int16_t current;
@@ -855,6 +855,24 @@ struct PACKED log_Beacon {
     float posz;
 };
 
+// proximity sensor logging
+struct PACKED log_Proximity {
+    LOG_PACKET_HEADER;
+    uint64_t time_us;
+    uint8_t health;
+    float dist0;
+    float dist45;
+    float dist90;
+    float dist135;
+    float dist180;
+    float dist225;
+    float dist270;
+    float dist315;
+    float distup;
+    float closest_angle;
+    float closest_dist;
+};
+
 struct PACKED log_SRTL {
     LOG_PACKET_HEADER;
     uint64_t time_us;
@@ -992,6 +1010,8 @@ Format characters in the format string for binary log messages
       "DMS", "IIIIIBBBBBBBBBB",         "TimeMS,N,Dp,RT,RS,Er,Fa,Fmn,Fmx,Pa,Pmn,Pmx,Sa,Smn,Smx" }, \
     { LOG_BEACON_MSG, sizeof(log_Beacon), \
       "BCN", "QBBfffffff",  "TimeUS,Health,Cnt,D0,D1,D2,D3,PosX,PosY,PosZ" }, \
+    { LOG_PROXIMITY_MSG, sizeof(log_Proximity), \
+      "PRX", "QBfffffffffff", "TimeUS,Health,D0,D45,D90,D135,D180,D225,D270,D315,DUp,CAn,CDis" } \
     { LOG_SRTL_MSG, sizeof(log_SRTL), \
       "SRTL", "QBfff", "TimeUS,Type,N,E,D" }
 
@@ -1285,6 +1305,7 @@ enum LogMessages {
     LOG_VISUALODOM_MSG,
     LOG_AOA_SSA_MSG,
     LOG_BEACON_MSG,
+    LOG_PROXIMITY_MSG,
     LOG_SRTL_MSG,
 };
 
