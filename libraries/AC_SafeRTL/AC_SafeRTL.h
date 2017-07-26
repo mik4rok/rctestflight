@@ -5,7 +5,7 @@
 #include <AP_HAL/AP_HAL.h>
 #include <AP_Math/AP_Math.h>
 
-#include <bitset> // TODO if this uses a non-negligible amount of memory, re-implement without this
+#include <bitset>
 #include <vector>
 
 #define SMALL_FLOAT  0.0000001f
@@ -20,7 +20,6 @@
 #define RDP_TIME 200
 #define LOOP_TIME 300
 
-// FIXME are inline methods preferred?
 #define HYPOT(a,b) (a-b).length()
 
 class SafeRTL_Path {
@@ -84,7 +83,7 @@ private:
         Vector3f halfway_point;
     } loop;
     // the result of the pruning algorithm
-    std::vector<loop> _prunable_loops; // TODO this might allocate memory while flying. Maybe consider a way to do this with an array or AP_Buffer. or at elast use std::list because it is better at handling deletions
+    std::vector<loop> _prunable_loops; // TODO this might allocate memory while flying. Maybe consider a way to do this with an array or AP_Buffer. or at least use std::list because it is better at handling deletions
     // everything before _pruning_clean_until has been calculated already to be un-simplify-able. This avoids recalculating a known result.
     uint8_t _pruning_clean_until;
 };

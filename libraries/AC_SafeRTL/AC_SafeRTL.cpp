@@ -37,7 +37,7 @@ SafeRTL_Path::SafeRTL_Path(bool log) :
     _pruning_clean_until(0),
     _logging_enabled(log)
 {
-    _simplification_bitmask = std::bitset<MAX_PATH_LEN>().set(); //initialize to 1111...
+    _simplification_bitmask = std::bitset<MAX_PATH_LEN>().set(); //initialize to 0b1111...
     path[0] = {0.0f, 0.0f, 0.0f};
 }
 
@@ -91,7 +91,6 @@ bool SafeRTL_Path::routine_cleanup()
 
     // otherwise we'll see how much we could clean up by pruning loops
     _remove_unacceptable_overlapping_loops();
-    // FIXME simplification_bitmask and prunable_loops might change during this method. put a flag somewhere to prevent that. same for method below
 
     int potential_amount_to_prune = 0;
     for (uint32_t i = 0; i < _prunable_loops.size() - 1; i++) {
@@ -135,7 +134,7 @@ Vector3f* SafeRTL_Path::thorough_cleanup()
     _zero_points_by_simplification_bitmask();
 
     // apply pruning
-    //_remove_unacceptable_overlapping_loops();
+    _remove_unacceptable_overlapping_loops();
     _zero_points_by_loops(MAX_PATH_LEN); // prune every single loop
 
     _remove_empty_points();
@@ -309,19 +308,21 @@ void SafeRTL_Path::_remove_unacceptable_overlapping_loops()
     }
 
     // iterate through all loops. dont increment i here, that happens inside
-    for (uint32_t i = 0; i < _prunable_loops.size() - 1;) {
+    uint32_t i;
+    for (i = 0; i < _prunable_loops.size() - 1;) {
         int chain_len = 0;
-        for(uint32_t j = i+1; j < _prunable_loops.size() - 1; j++){
+        uint32_t j;
+        for(j = i+1; j < _prunable_loops.size() - 1; j++){
             // if two loops overlap,
             if(_prunable_loops[j-1].end_index < _prunable_loops[j].start_index){
                 chain_len++;
             }else{
-                i += j; // next iteration, only start looking for the next chain at an index greater than the end of this chain
                 break;
             }
         }
         // if no loop was detected
         if(chain_len == 0){
+            i = j;
             continue;
         }
         // if we got here, we have identified a chain of overlapping loops,
@@ -331,12 +332,12 @@ void SafeRTL_Path::_remove_unacceptable_overlapping_loops()
         float odd_dist_removed = 0;
         // for each prunable loop in the overlapping chain
         uint32_t k;
-        for(k = i; i <= i + chain_len; k++){
+        for(k = i; k <= i + chain_len; k++){
             float loop_len = 0;
             // for each point in said prunable loop
             for(uint32_t l = _prunable_loops[k].start_index; l < _prunable_loops[k].end_index; l++){
                 // add the real-world distance between two sequential points in the loop
-                loop_len += HYPOT(path[l], path[l+1]);
+                loop_len += HYPOT(path[l-1], path[l]);
             }
             // now add the real-world length of that loop to the correct counter
             if(k%2==0){ // evens
@@ -345,12 +346,13 @@ void SafeRTL_Path::_remove_unacceptable_overlapping_loops()
                 odd_dist_removed += loop_len;
             }
         }
-        // if we want to delete evens, but the loops starts ad odds, or if we want to delete odds but the loop starts at evens, offset deletion by one.
+        // if we want to delete evens, but the loops starts at odds, or if we want to delete odds but the loop starts at evens, offset deletion by one.
         bool delete_offset = (even_dist_removed < odd_dist_removed) == (k % 2);
-        for(uint32_t l = i + delete_offset; k <= i + chain_len; k++){
+        for(uint32_t l = i + delete_offset; l <= i + chain_len; l++){
             _prunable_loops.erase(_prunable_loops.begin() + l);
             chain_len--;
         }
+        i = j; // next iteration, only start looking for the next chain at an index greater than the end of this chain
     }
 }
 
@@ -407,7 +409,6 @@ void SafeRTL_Path::_remove_empty_points()
 *  Limitation: This function does not work for parallel lines. In this case, it will return FLT_MAX. This does not matter for the path cleanup algorithm because
 *  the pruning will still occur fine between the first parallel segment and a segment which is directly before or after the second segment.
 */
-// typedef struct dist_point dist_point;
 SafeRTL_Path::dist_point SafeRTL_Path::_segment_segment_dist(const Vector3f &p1, const Vector3f &p2, const Vector3f &p3, const Vector3f &p4)
 {
     Vector3f u = p2-p1;

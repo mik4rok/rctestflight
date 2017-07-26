@@ -53,7 +53,7 @@ void Copter::safe_rtl_run()
             safe_rtl_pre_land_position_run();
             break;
         case SafeRTL_Descend:
-            rtl_descent_run();
+            rtl_descent_run(); // Re-using the descend method from normal rtl mode.
             break;
         case SafeRTL_Land:
             rtl_land_run(); // Re-using the land method from normal rtl mode.
@@ -140,7 +140,7 @@ void Copter::safe_rtl_drop_breadcrumb()
     // it's important to do the cleanup before adding the point, because appending a point will reset the cleanup methods,
     // so there will not be anything to clean up immediately after adding a point.
     // The cleanup usually returns immediately. If it decides to actually perform the cleanup, it takes about 100us.
-    if(!safe_rtl_path.routine_cleanup()){ // TODO maybe give up on SafeRTL if the position has been bad for X seconds.
+    if(!safe_rtl_path.routine_cleanup()){ // TODO give up on SafeRTL if the position has been bad for X seconds.
         safe_rtl_path.deactivate();
         DataFlash.Log_Write_SRTL(DataFlash_Class::SRTL_DEACTIVATED, {0.0f, 0.0f, 0.0f});
         gcs().send_text(MAV_SEVERITY_WARNING,"SafeRTL unavailable");
