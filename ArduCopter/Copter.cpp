@@ -71,6 +71,7 @@ Copter::Copter(void) :
     rtl_loiter_start_time(0),
     auto_trim_counter(0),
     ServoRelayEvents(relay),
+    safe_rtl_path(true),
 #if CAMERA == ENABLED
     camera(&relay, MASK_LOG_CAMERA, current_loc, gps, ahrs),
 #endif

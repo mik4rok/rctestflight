@@ -579,6 +579,8 @@ private:
     // Landing Gear Controller
     AP_LandingGear landinggear;
 
+    SafeRTL_Path safe_rtl_path;
+
     // terrain handling
 #if AP_TERRAIN_AVAILABLE && AC_TERRAIN
     AP_Terrain terrain;
