@@ -25,7 +25,7 @@
 *    will just have to wait for a bit until they are both done.
 */
 
-SafeRTL_Path::SafeRTL_Path() :
+SafeRTL_Path::SafeRTL_Path(bool log) :
     accepting_new_points(true),
     _active(true),
     _last_index(0),
@@ -34,7 +34,8 @@ SafeRTL_Path::SafeRTL_Path() :
     _pruning_complete(false),
     _pruning_current_i(0),
     _pruning_min_j(0),
-    _pruning_clean_until(0)
+    _pruning_clean_until(0),
+    _logging_enabled(log)
 {
     _simplification_bitmask = std::bitset<MAX_PATH_LEN>().set(); //initialize to 1111...
     path[0] = {0.0f, 0.0f, 0.0f};
@@ -48,7 +49,10 @@ void SafeRTL_Path::append_if_far_enough(Vector3f p)
     if (HYPOT(p, path[_last_index]) > POSITION_DELTA) {
         // add the breadcrumb
         path[++_last_index] = p;
-        DataFlash_Class::instance()->Log_Write_SRTL(DataFlash_Class::SRTL_POINT_ADD, p);
+
+        if(_logging_enabled){
+            DataFlash_Class::instance()->Log_Write_SRTL(DataFlash_Class::SRTL_POINT_ADD, p);
+        }
 
         // if cleanup algorithms are finished (And therefore not runnning), reset them
         if (_simplification_complete) {
@@ -131,7 +135,7 @@ Vector3f* SafeRTL_Path::thorough_cleanup()
     _zero_points_by_simplification_bitmask();
 
     // apply pruning
-    _remove_unacceptable_overlapping_loops();
+    //_remove_unacceptable_overlapping_loops();
     _zero_points_by_loops(MAX_PATH_LEN); // prune every single loop
 
     _remove_empty_points();
@@ -161,7 +165,9 @@ void SafeRTL_Path::reset_path(Vector3f start)
     _last_index = 0;
     path[_last_index] = start;
     _active = true;
+    _simplification_complete = false;
     _simplification_clean_until = 0;
+    _pruning_complete = false;
     _pruning_clean_until = 0;
 }
 
@@ -281,7 +287,9 @@ void SafeRTL_Path::_zero_points_by_simplification_bitmask()
         if (!_simplification_bitmask[i]) {
             _simplification_clean_until = MIN(_simplification_clean_until, i-1);
             if(path[i] != Vector3f(0.0f, 0.0f, 0.0f)){
-                DataFlash_Class::instance()->Log_Write_SRTL(DataFlash_Class::SRTL_POINT_SIMPLIFY, path[i]);
+                if(_logging_enabled){
+                    DataFlash_Class::instance()->Log_Write_SRTL(DataFlash_Class::SRTL_POINT_SIMPLIFY, path[i]);
+                }
                 path[i] = Vector3f(0.0f, 0.0f, 0.0f);
             }
         }
@@ -296,6 +304,10 @@ void SafeRTL_Path::_zero_points_by_simplification_bitmask()
 */
 void SafeRTL_Path::_remove_unacceptable_overlapping_loops()
 {
+    if(_prunable_loops.size() == 0){
+        return;
+    }
+
     // iterate through all loops. dont increment i here, that happens inside
     for (uint32_t i = 0; i < _prunable_loops.size() - 1;) {
         int chain_len = 0;
@@ -354,7 +366,9 @@ void SafeRTL_Path::_zero_points_by_loops(uint8_t points_to_delete)
         for (int j = l.start_index; j < l.end_index; j++) {
             // zero this point if it wasn't already zeroed
             if(path[j] != Vector3f(0.0f, 0.0f, 0.0f)){
-                DataFlash_Class::instance()->Log_Write_SRTL(DataFlash_Class::SRTL_POINT_PRUNE, path[j]);
+                if(_logging_enabled){
+                    DataFlash_Class::instance()->Log_Write_SRTL(DataFlash_Class::SRTL_POINT_PRUNE, path[j]);
+                }
                 path[j] = Vector3f(0.0f, 0.0f, 0.0f);
             }
         }

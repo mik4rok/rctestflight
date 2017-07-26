@@ -14,7 +14,7 @@ void setup()
     hal.console->printf("SafeRTL performance test\n");
     AP_BoardConfig{}.init();
 
-    p = new SafeRTL_Path();
+    p = new SafeRTL_Path(false);
 }
 
 void loop()

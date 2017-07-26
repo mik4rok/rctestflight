@@ -29,7 +29,7 @@ class SafeRTL_Path {
     uint8_t _last_index;
 public:
     bool accepting_new_points; // false means that any call to append_if_far_enough() will fail. This should be unset when entering SafeRTL mode, and set when exiting.
-    SafeRTL_Path();
+    SafeRTL_Path(bool);
     void append_if_far_enough(Vector3f);
     bool routine_cleanup();
     Vector3f* thorough_cleanup();
@@ -43,6 +43,7 @@ public:
     void rdp();
     void detect_loops();
 private:
+    bool _logging_enabled;
     bool _active; // if the path becomes too long to keep in memory, and too convoluted to be cleaned up, SafeRTL will be permanently deactivated (for the remainder of the flight)
     // misc cleanup helper methods:
     void _reset_rdp();
