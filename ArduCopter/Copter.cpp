@@ -102,7 +102,7 @@ Copter::Copter(void) :
     // ToDo: Input Manager is only used by Heli for 3.3, but will be used by all frames for 3.4
     input_manager(MAIN_LOOP_RATE),
 #endif
-    safe_rtl_path(true),
+    safe_rtl_path(ahrs, DataFlash, gcs(), true),
     in_mavlink_delay(false),
     gcs_out_of_time(false),
     param_loader(var_info)

@@ -460,8 +460,8 @@ void Copter::three_hz_loop()
     // update ch6 in flight tuning
     tuning();
 
-    // if appropriate, drop a new breadcrumb for SafeRTL.
-    safe_rtl_drop_breadcrumb();
+    // update SafeRTL. If it fails, inform the user.
+    safe_rtl_path.update(position_ok());
 }
 
 // one_hz_loop - runs at 1Hz
