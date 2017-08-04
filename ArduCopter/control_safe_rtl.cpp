@@ -77,7 +77,7 @@ void Copter::safe_rtl_path_follow_run()
     // if we are close to current target point, switch the next point to be our target.
     if (wp_nav->reached_wp_destination()) {
         Vector3f next_point;
-        bool last_point = safe_rtl_path.pop_point(next_point);
+        bool last_point = safe_rtl_path.pop_point(next_point) == 0;
         if (!last_point) {
             // go to next point along path
             wp_nav->set_wp_destination_NED_origin(next_point);

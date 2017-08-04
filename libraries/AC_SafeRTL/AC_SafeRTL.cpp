@@ -1,3 +1,16 @@
+/*
+   This program is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+   You should have received a copy of the GNU General Public License
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include "AC_SafeRTL.h"
 
 /*
@@ -28,7 +41,8 @@
 SafeRTL_Path::SafeRTL_Path(bool log) :
     _logging_enabled(log),
     _active(true),
-    _accepting_new_points(true)
+    _accepting_new_points(true),
+    _prunable_loops_last_index(-1)
 {
     _simplification_bitmask = std::bitset<SAFERTL_MAX_PATH_LEN>().set(); //initialize to 0b1111...
     path[0] = {0.0f, 0.0f, 0.0f};
@@ -36,7 +50,7 @@ SafeRTL_Path::SafeRTL_Path(bool log) :
 
 void SafeRTL_Path::append_if_far_enough(const Vector3f &pos)
 {
-    if (!_accepting_new_points) {
+    if (!_accepting_new_points || _last_index >= SAFERTL_MAX_PATH_LEN - 1) {
         return;
     }
     if (HYPOT(pos, path[_last_index]) > SAFERTL_POSITION_DELTA) {
@@ -86,7 +100,7 @@ bool SafeRTL_Path::routine_cleanup()
     _remove_unacceptable_overlapping_loops();
 
     uint32_t potential_amount_to_prune = 0;
-    for (uint32_t i = 0; i < _prunable_loops.size() - 1; i++) {
+    for (uint32_t i = 0; i <= _prunable_loops_last_index; i++) {
         // add 1 at the end, because a pruned loop is always replaced by one new point.
         potential_amount_to_prune += _prunable_loops[i].end_index - _prunable_loops[i].start_index + 1;
     }
@@ -140,16 +154,21 @@ Vector3f* SafeRTL_Path::thorough_cleanup()
 }
 
 /**
-*   Returns true if the list is empty after popping this point.
+*   Returns the number of points remaining after this point has been popped.
+*   The argument that is passed as a parameter will be overwritten with the point being popped.
 */
-bool SafeRTL_Path::pop_point(Vector3f& point)
+uint32_t SafeRTL_Path::pop_point(Vector3f& point)
 {
+    if (_last_index < 0) {
+        // don't return anything if there is nothing to return.
+        return -1;
+    }
     if (_last_index == 0) {
         point = path[0];
-        return true;
+        return 0;
     }
-    point =  path[_last_index--];
-    return false;
+    point = path[_last_index--];
+    return _last_index + 1;
 }
 
 void SafeRTL_Path::reset_path(const Vector3f& start)
@@ -161,6 +180,7 @@ void SafeRTL_Path::reset_path(const Vector3f& start)
     _simplification_clean_until = 0;
     _pruning_complete = false;
     _pruning_clean_until = 0;
+    _prunable_loops_last_index = -1;
 }
 
 /**
@@ -225,7 +245,8 @@ void SafeRTL_Path::rdp()
 */
 void SafeRTL_Path::detect_loops()
 {
-    if (_pruning_complete) {
+    // if there's no space to write down any newly detected loops, don't bother searching for them
+    if (_pruning_complete || _prunable_loops_last_index >= SAFERTL_MAX_DETECTABLE_LOOPS ) {
         return;
     }
     uint32_t start_time = AP_HAL::micros();
@@ -243,7 +264,7 @@ void SafeRTL_Path::detect_loops()
             if (dp.distance <= SAFERTL_PRUNING_DELTA) {
                 _pruning_min_j = j;
                 // int promotion rules disallow using i+1 and j+1
-                _prunable_loops.push_back({(++_pruning_current_i)--,(++j)--,dp.point});
+                _prunable_loops[++_prunable_loops_last_index] = {(++_pruning_current_i)--,(++j)--,dp.point};
             }
             j++;
         }
@@ -268,7 +289,7 @@ void SafeRTL_Path::_reset_pruning()
     _pruning_complete = false;
     _pruning_current_i = _pruning_clean_until;
     _pruning_min_j = _pruning_clean_until+2;
-    _prunable_loops.clear();
+    _prunable_loops_last_index = -1; // reset the array which holds the detected loops
 }
 
 void SafeRTL_Path::_zero_points_by_simplification_bitmask()
@@ -294,16 +315,17 @@ void SafeRTL_Path::_zero_points_by_simplification_bitmask()
 */
 void SafeRTL_Path::_remove_unacceptable_overlapping_loops()
 {
-    if (_prunable_loops.size() == 0) {
+    // if there's no loops of only one loop, there cannot be any conflicting loops.
+    if (_prunable_loops_last_index <= 0) {
         return;
     }
 
     // iterate through all loops. dont increment i here, that happens inside
     uint32_t i;
-    for (i = 0; i < _prunable_loops.size() - 1;) {
+    for (i = 0; i <= _prunable_loops_last_index - 1;) {
         uint32_t chain_len = 0;
         uint32_t j;
-        for (j = i+1; j < _prunable_loops.size() - 1; j++) {
+        for (j = i+1; j <= _prunable_loops_last_index; j++) {
             // if two loops overlap,
             if (_prunable_loops[j-1].end_index < _prunable_loops[j].start_index) {
                 chain_len++;
@@ -339,12 +361,13 @@ void SafeRTL_Path::_remove_unacceptable_overlapping_loops()
         }
         // if we want to delete evens, but the loops starts at odds, or if we want to delete odds but the loop starts at evens, offset deletion by one.
         bool delete_offset = (even_dist_removed < odd_dist_removed) == (k % 2);
-        for (uint32_t l = i + delete_offset; l <= i + chain_len; l++) {
-            _prunable_loops.erase(_prunable_loops.begin() + l);
-            chain_len--;
+        for (uint32_t l = i + delete_offset; l <= i + chain_len; l+=2) {
+            _prunable_loops[l] = loop{0}; // mark the point for deletion
         }
         i = j; // next iteration, only start looking for the next chain at an index greater than the end of this chain
     }
+    // delete all points that were marked for deletion
+    _remove_empty_loops();
 }
 
 /**
@@ -353,7 +376,7 @@ void SafeRTL_Path::_remove_unacceptable_overlapping_loops()
 void SafeRTL_Path::_zero_points_by_loops(uint8_t points_to_delete)
 {
     int removed_points = 0;
-    for (uint32_t i = 0; i < _prunable_loops.size(); i++) {
+    for (uint32_t i = 0; i <= _prunable_loops_last_index; i++) {
         loop l = _prunable_loops[i];
         _pruning_clean_until = MIN(_pruning_clean_until, l.start_index-1);
         for (uint32_t j = l.start_index; j < l.end_index; j++) {
@@ -393,6 +416,25 @@ void SafeRTL_Path::_remove_empty_points()
 }
 
 /**
+*  Removes all NULL loops from _prunable_loops, and shifts remaining items to correct position.
+*/
+void SafeRTL_Path::_remove_empty_loops()
+{
+    int32_t i = -1;
+    int32_t j = -1;
+    uint32_t removed = 0;
+    while (++i <= _prunable_loops_last_index) {
+        static loop empty_loop = loop{0};
+        if (memcmp(&_prunable_loops[i], &empty_loop, sizeof(loop)) == 0) {
+            _prunable_loops[++j] = _prunable_loops[i];
+        } else {
+            removed++;
+        }
+    }
+    _prunable_loops_last_index -= removed;
+}
+
+/**
 *  Returns the closest distance in 3D space between any part of two input segments, defined from p1 to p2 and from p3 to p4.
 *  Also returns the point which is halfway between
 *
@@ -401,21 +443,24 @@ void SafeRTL_Path::_remove_empty_points()
 */
 SafeRTL_Path::dist_point SafeRTL_Path::_segment_segment_dist(const Vector3f &p1, const Vector3f &p2, const Vector3f &p3, const Vector3f &p4)
 {
-    Vector3f u = p2-p1;
-    Vector3f v = p4-p3;
-    Vector3f w = p1-p3;
+    Vector3f line1 = p2-p1;
+    Vector3f line2 = p4-p3;
+    Vector3f line_start_diff = p1-p3; // from the beginning of the second line to the beginning of the first line
 
-    float a = u*u;
-    float b = u*v;
-    float c = v*v;
-    float d = u*w;
-    float e = v*w;
+    // these don't really have a physical representation. They're only here to break up the longer formulas below.
+    float a = line1*line1;
+    float b = line1*line2;
+    float c = line2*line2;
+    float d = line1*line_start_diff;
+    float e = line2*line_start_diff;
 
     // the parameter for the position on line1 and line2 which define the closest points.
     float t1 = 0.0f;
     float t2 = 0.0f;
 
-    if (is_zero((a*c)-(b*b))) { // if almost parallel. This avoids division by 0.
+    // if lines are almost parallel, return a garbage answer. This is irrelevant, since the loop
+    // could always be pruned start/end of the previous/subsequent line segment
+    if (is_zero((a*c)-(b*b))) {
         return {FLT_MAX, Vector3f(0.0f, 0.0f, 0.0f)};
     } else {
         t1 = (b*e-c*d)/(a*c-b*b);
@@ -426,9 +471,9 @@ SafeRTL_Path::dist_point SafeRTL_Path::_segment_segment_dist(const Vector3f &p1,
         t2 = constrain_float(t2, 0.0f, 1.0f);
 
         // difference between two closest points
-        Vector3f dP = w+u*t1-v*t2;
+        Vector3f dP = line_start_diff+line1*t1-line2*t2;
 
-        Vector3f halfway_point = (p1+u*t1 + p3+v*t2)/2.0f;
+        Vector3f halfway_point = (p1+line1*t1 + p3+line2*t2)/2.0f;
         return {dP.length(), halfway_point};
     }
 }

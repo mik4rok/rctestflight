@@ -12,6 +12,7 @@
 #define SAFERTL_PRUNING_DELTA (SAFERTL_POSITION_DELTA * 0.99) // XXX must be smaller than position_delta! How many meters apart must two points be, such that we can assume that there is no obstacle between those points
 #define SAFERTL_RDP_EPSILON (SAFERTL_POSITION_DELTA * 0.5)
 #define SAFERTL_MAX_PATH_LEN 100 // the amount of memory used by safe RTL will be slightly higher than 3*8*MAX_PATH_LEN bytes. Increasing this number will improve path pruning, but will use more memory, and running a path cleanup will take longer. No longer than 255.
+#define SAFERTL_MAX_DETECTABLE_LOOPS (SAFERTL_MAX_PATH_LEN / 5) // the highest amount of loops that the loop detector can detect. Should never be greater than 255
 #define SAFERTL_RDP_STACK_LEN 64 // the amount of memory to be allocated for the RDP algorithm to write its to do list.
 // XXX A number too small for RDP_STACK_LEN can cause a buffer overflow! The number to put here is int((s/2-1)+min(s/2, MAX_PATH_LEN-s)), where s = pow(2, floor(log(MAX_PATH_LEN)/log(2)))
 // To avoid this annoying math, a good-enough overestimate is ciel(MAX_PATH_LEN*2./3.)
@@ -43,7 +44,7 @@ public:
     const Vector3f& get_point(uint8_t index) const { return path[index]; }
 
     // get next point on the path to home
-    bool pop_point(Vector3f& point);
+    uint32_t pop_point(Vector3f& point);
 
     // clear return path and set home locatione
     void reset_path(const Vector3f& start);
@@ -63,6 +64,7 @@ private:
     void _remove_unacceptable_overlapping_loops();
     void _zero_points_by_loops(uint8_t points_to_delete);
     void _remove_empty_points();
+    void _remove_empty_loops();
     // _segment_segment_dist returns two things, the closest distance reached between 2 line segments, and the point exactly between them.
     typedef struct {
         float distance;
@@ -103,7 +105,8 @@ private:
         Vector3f halfway_point;
     } loop;
     // the result of the pruning algorithm
-    std::vector<loop> _prunable_loops; // TODO this might allocate memory while flying. Maybe consider a way to do this with an array or AP_Buffer. or at least use std::list because it is better at handling deletions
+    loop _prunable_loops[SAFERTL_MAX_DETECTABLE_LOOPS]; // This is where info about detected loops is stored.
+    int32_t _prunable_loops_last_index;
     // everything before _pruning_clean_until has been calculated already to be un-simplify-able. This avoids recalculating a known result.
     uint8_t _pruning_clean_until;
 };
