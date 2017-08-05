@@ -120,7 +120,7 @@ Vector3f* SafeRTL_Path::thorough_cleanup()
 
     // apply pruning
     _remove_unacceptable_overlapping_loops();
-    _zero_points_by_loops(SAFERTL_MAX_PATH_LEN); // prune every single loop
+    _zero_points_by_loops(SAFERTL_MAX_POINTS_DEFAULT); // prune every single loop
 
     _remove_empty_points();
 

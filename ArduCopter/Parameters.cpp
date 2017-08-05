@@ -259,7 +259,7 @@ const AP_Param::Info Copter::var_info[] = {
     // @Increment: 10
     // @User: Standard
     GSCALAR(land_speed_high,        "LAND_SPEED_HIGH",   0),
-    
+
     // @Param: PILOT_VELZ_MAX
     // @DisplayName: Pilot maximum vertical speed
     // @Description: The maximum vertical velocity the pilot may request in cm/s
@@ -448,7 +448,7 @@ const AP_Param::Info Copter::var_info[] = {
     // @Range: 0 127
     // @User: Advanced
     GSCALAR(disarm_delay, "DISARM_DELAY",           AUTO_DISARMING_DELAY),
-    
+
     // @Param: ANGLE_MAX
     // @DisplayName: Angle Max
     // @Description: Maximum lean angle in all flight modes
@@ -802,7 +802,7 @@ const AP_Param::Info Copter::var_info[] = {
     // @Group: EK2_
     // @Path: ../libraries/AP_NavEKF2/AP_NavEKF2.cpp
     GOBJECTN(EKF2, NavEKF2, "EK2_", NavEKF2),
-    
+
     // @Group: EK3_
     // @Path: ../libraries/AP_NavEKF3/AP_NavEKF3.cpp
     GOBJECTN(EKF3, NavEKF3, "EK3_", NavEKF3),
@@ -814,7 +814,7 @@ const AP_Param::Info Copter::var_info[] = {
     // @Group: RSSI_
     // @Path: ../libraries/AP_RSSI/AP_RSSI.cpp
     GOBJECT(rssi, "RSSI_",  AP_RSSI),
-    
+
 #if RANGEFINDER_ENABLED == ENABLED
     // @Group: RNGFND
     // @Path: ../libraries/AP_RangeFinder/RangeFinder.cpp
@@ -891,10 +891,14 @@ const AP_Param::Info Copter::var_info[] = {
     // @User: Standard
     GSCALAR(terrain_follow, "TERRAIN_FOLLOW", 0),
 
+    // @Group: SAFERTL_
+    // @Path: ../libraries/AC_SafeRTL/AC_SafeRTL.cpp
+    GOBJECT(safe_rtl_path, "SAFERTL_", SafeRTL_Path),
+
     // @Group:
     // @Path: Parameters.cpp
     GOBJECT(g2, "",  ParametersG2),
-    
+
     AP_VAREND
 };
 
@@ -1014,7 +1018,7 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
 
     // ID 19 reserved for TCAL (PR pending)
     // ID 20 reserved for TX_TYPE (PR pending)
-    
+
     AP_GROUPEND
 };
 
@@ -1092,7 +1096,7 @@ void Copter::load_parameters(void)
 
     // setup AP_Param frame type flags
     AP_Param::set_frame_type_flags(AP_PARAM_FRAME_COPTER);
-    
+
 }
 
 // handle conversion of PID gains from Copter-3.3 to Copter-3.4

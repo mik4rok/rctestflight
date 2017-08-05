@@ -188,7 +188,7 @@ public:
 
         // 97: RSSI
         k_param_rssi = 97,
-                
+
         //
         // 100: Inertial Nav
         //
@@ -368,6 +368,8 @@ public:
 
         // 254,255: reserved
 
+        k_param_safe_rtl_path = 254,
+
         // the k_param_* space is 9-bits in size
         // 511: reserved
     };
@@ -411,7 +413,7 @@ public:
 
     AP_Int16        poshold_brake_rate;         // PosHold flight mode's rotation rate during braking in deg/sec
     AP_Int16        poshold_brake_angle_max;    // PosHold flight mode's max lean angle during braking in centi-degrees
-    
+
     // Waypoints
     //
     AP_Int32        rtl_loiter_time;
@@ -549,7 +551,7 @@ public:
 
     // whether to enforce acceptance of packets only from sysid_my_gcs
     AP_Int8 sysid_enforce;
-    
+
 #if ADVANCED_FAILSAFE == ENABLED
     // advanced failsafe library
     AP_AdvancedFailsafe_Copter afs;
@@ -567,7 +569,7 @@ public:
 
     // RC input channels
     RC_Channels rc_channels;
-    
+
     // control over servo output ranges
     SRV_Channels servo_channels;
 };

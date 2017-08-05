@@ -9,10 +9,12 @@
 #include <bitset>
 #include <vector>
 
-#define SAFERTL_POSITION_DELTA 2.0f // how many meters to move before appending a new position to return_path
-#define SAFERTL_PRUNING_DELTA (SAFERTL_POSITION_DELTA * 0.99) // XXX must be smaller than position_delta! How many meters apart must two points be, such that we can assume that there is no obstacle between those points
-#define SAFERTL_MAX_PATH_LEN 100 // the amount of memory used by safe RTL will be slightly higher than 3*8*MAX_PATH_LEN bytes. Increasing this number will improve path pruning, but will use more memory, and running a path cleanup will take longer. No longer than 255.
-#define SAFERTL_MAX_DETECTABLE_LOOPS (SAFERTL_MAX_PATH_LEN / 5) // the highest amount of loops that the loop detector can detect. Should never be greater than 255
+#define SAFERTL_ACCURACY_DEFAULT 2.0f // how many meters to move before appending a new position to return_path
+#define SAFERTL_MAX_POINTS_DEFAULT 100 // the amount of memory used by safe RTL will be slightly higher than 3*8*MAX_PATH_LEN bytes. Increasing this number will improve path pruning, but will use more memory, and running a path cleanup will take longer. No longer than 255.
+
+#define SAFERTL_PRUNING_DELTA (SAFERTL_ACCURACY_DEFAULT * 0.99) // XXX must be smaller than position_delta! How many meters apart must two points be, such that we can assume that there is no obstacle between those points
+#define SAFERTL_SIMPLIFICATION_EPSILON (SAFERTL_ACCURACY_DEFAULT * 0.5)
+#define SAFERTL_MAX_DETECTABLE_LOOPS (SAFERTL_MAX_POINTS_DEFAULT / 5) // the highest amount of loops that the loop detector can detect. Should never be greater than 255
 #define SAFERTL_RDP_STACK_LEN 64 // the amount of memory to be allocated for the RDP algorithm to write its to do list.
 // XXX A number too small for RDP_STACK_LEN can cause a buffer overflow! The number to put here is int((s/2-1)+min(s/2, MAX_PATH_LEN-s)), where s = pow(2, floor(log(MAX_PATH_LEN)/log(2)))
 // To avoid this annoying math, a good-enough overestimate is ciel(MAX_PATH_LEN*2./3.)
@@ -48,9 +50,16 @@ public:
 
     bool cleanup_ready() const { return _pruning_complete && _simplification_complete; }
     bool is_active() const { return _active; }
+
     // the two cleanup steps. These should be run regularly, maybe even by a different thread
     void detect_simplifications();
     void detect_loops();
+
+    // parameter var table
+    static const struct AP_Param::GroupInfo var_info[];
+
+    AP_Float safertl_accuracy;
+    AP_Int32 safertl_max_points;
 
 private:
     // add NED position (normally vehicle's current position) to the path
