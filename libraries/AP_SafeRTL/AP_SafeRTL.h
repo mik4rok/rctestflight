@@ -130,33 +130,33 @@ private:
 
     // path variables
     Vector3f* _path;    // points are stored in meters from EKF origin in NED
-    int16_t _path_points_max;   // after the array has been allocated, we will need to know how big it is. We can't use the parameter, because a user could change the parameter in-flight
-    int16_t _path_last_index;   // index of most recent point added to path
+    uint16_t _path_points_max;  // after the array has been allocated, we will need to know how big it is. We can't use the parameter, because a user could change the parameter in-flight
+    uint16_t _path_points_count;// number of points in the path array
 
     // Simplify state
     bool _simplify_complete;
     // structure and buffer to hold the "to-do list" for the SIMPLIFICATION algorithm.
     typedef struct {
-        int16_t start;
-        int16_t finish;
+        uint16_t start;
+        uint16_t finish;
     } simplify_start_finish_t;
     simplify_start_finish_t* _simplify_stack;
     uint16_t _simplify_stack_max;   // maximum number of elements in the _simplify_stack array
-    int16_t _simplify_stack_last_index = -1;
+    uint16_t _simplify_stack_count; // number of elements in _simplify_stack array
     Bitmask _simplify_bitmask = Bitmask(SAFERTL_POINTS_MAX);  // simplify algorithm clears bits for each point that can be removed
-    int16_t _simplify_clean_until;  // everything before _simplify_clean_until has been calculated already to be un-simplify-able. This avoids recalculating a known result.
+    uint16_t _simplify_clean_until; // all elements in _path before this index have been checked for simplification. This avoids recalculating a known result.
 
     // Pruning state
     bool _prune_complete;
-    int16_t _prune_current_i;
-    int16_t _prune_min_j;
+    uint16_t _prune_current_i;
+    uint16_t _prune_min_j;
     typedef struct {
-        int16_t start_index;
-        int16_t end_index;
+        uint16_t start_index;
+        uint16_t end_index;
         Vector3f midpoint;
     } prune_loop_t;
     prune_loop_t* _prunable_loops;  // the result of the pruning algorithm
     uint16_t _prunable_loops_max;   // maximum number of elements in the _prunable_loops array
-    int16_t _prunable_loops_last_index = -1;
-    int16_t _prune_clean_until; // everything before _prune_clean_until has been calculated already to be un-simplify-able. This avoids recalculating a known result.
+    uint16_t _prunable_loops_count; // number of elements in the _prunable_loops array
+    uint16_t _prune_clean_until;    // all elements in _path before this index have been checked for loops. This avoids recalculating a known result.
 };

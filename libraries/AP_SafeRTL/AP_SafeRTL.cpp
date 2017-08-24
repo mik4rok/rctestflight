@@ -137,7 +137,7 @@ void AP_SafeRTL::reset_path(bool position_ok, const Vector3f& current_pos)
     // reset pruning
     reset_pruning();
     // clear path
-    _path_last_index = 0;
+    _path_points_count = 0;
 
     // de-activate if no position at take-off
     if (!position_ok) {
@@ -148,7 +148,7 @@ void AP_SafeRTL::reset_path(bool position_ok, const Vector3f& current_pos)
     }
 
     // save current position as first point in path
-    _path[_path_last_index] = current_pos;
+    _path[_path_points_count++] = current_pos;
     _last_good_position_ms = AP_HAL::millis();
     _active = true;
 }
@@ -194,9 +194,9 @@ void AP_SafeRTL::update(bool position_ok, const Vector3f& current_pos)
 
     if (position_ok) {
         // append the new point, if we have traveled far enough
-        if (HYPOT(current_pos, _path[_path_last_index]) > _accuracy) {
+        if (HYPOT(current_pos, _path[_path_points_count-1]) > _accuracy) {
             // add the breadcrumb
-            _path[++_path_last_index] = current_pos;
+            _path[_path_points_count++] = current_pos;
 
             log_action(SRTL_POINT_ADD, current_pos);
 
@@ -245,72 +245,82 @@ bool AP_SafeRTL::thorough_cleanup()
 bool AP_SafeRTL::pop_point(Vector3f& point)
 {
     // check we have a point
-    if (!_active || _path_last_index < 0) {
+    if (!_active || _path_points_count == 0) {
         return false;
     }
 
     // return last point and remove from path
-    point = _path[_path_last_index--];
+    point = _path[--_path_points_count];
     return true;
 }
 
 // returns number of points on the path
 uint16_t AP_SafeRTL::get_num_points()
 {
-    return _path_last_index+1;
+    return _path_points_count;
 }
 
 // Simplifies a 3D path, according to the Ramer-Douglas-Peucker algorithm.
 // _simplify_complete is set to true when all simplifications on the path have been identified
 void AP_SafeRTL::detect_simplifications()
 {
-    if (!_active || _simplify_complete || _path_last_index < 2) {
+    if (!_active || _simplify_complete || _path_points_count < 3) {
         return;
     }
 
     // if not complete but also nothing to do, we must be restarting
-    if (_simplify_stack_last_index == -1) {
-        // reset to beginning state
-        _simplify_stack[++_simplify_stack_last_index] = simplify_start_finish_t {0, _path_last_index};
+    if (_simplify_stack_count == 0) {
+        // reset to beginning state.  a single element in the array with start = first path point, finish = final path point
+        _simplify_stack[0].start = 0;
+        _simplify_stack[0].finish = _path_points_count-1;
+        _simplify_stack_count++;
     }
 
     const uint32_t start_time_us = AP_HAL::micros();
-    while (_simplify_stack_last_index >= 0) { // while there is something to do
+    while (_simplify_stack_count > 0) { // while there is something to do
+
+        // if this method has run for long enough, exit
         if (AP_HAL::micros() - start_time_us > SAFERTL_SIMPLIFY_TIME_US) {
             return;
         }
 
-        const simplify_start_finish_t tmp = _simplify_stack[_simplify_stack_last_index--];
-        const int16_t start_index = tmp.start;
-        const int16_t end_index = tmp.finish;
+        // pop last item off the simplify stack
+        const simplify_start_finish_t tmp = _simplify_stack[--_simplify_stack_count];
+        const uint16_t start_index = tmp.start;
+        const uint16_t end_index = tmp.finish;
 
         // if we've already verified that everything before here is clean
         if (end_index <= _simplify_clean_until) {
             continue;
         }
 
+        // find the point between start and end points that is farthest from the start-end line segment
         float max_dist = 0.0f;
-        int16_t index = start_index;
-        for (int16_t i = index + 1; i < end_index; i++) {
+        uint16_t farthest_point_index = start_index;
+        for (uint16_t i = start_index + 1; i < end_index; i++) {
+            // only check points that have not already been flagged for simplification
             if (_simplify_bitmask.get(i)) {
                 const float dist = point_line_dist(_path[i], _path[start_index], _path[end_index]);
                 if (dist > max_dist) {
-                    index = i;
+                    farthest_point_index = i;
                     max_dist = dist;
                 }
             }
         }
 
+        // if the farthest point is more than ACCURACY * 0.5 add two new elements to the _simplification_stack
+        // so that on the next iteration we will check between start-to-farthestpoint and farthestpoint-to-end
         if (max_dist > SAFERTL_SIMPLIFY_EPSILON) {
             // if the to-do list is full, give up on simplifying. This should never happen.
-            if (_simplify_stack_last_index > _simplify_stack_max) {
+            if (_simplify_stack_count >= _simplify_stack_max) {
                 _simplify_complete = true;
                 return;
             }
-            _simplify_stack[++_simplify_stack_last_index] = simplify_start_finish_t {start_index, index};
-            _simplify_stack[++_simplify_stack_last_index] = simplify_start_finish_t {index, end_index};
+            _simplify_stack[_simplify_stack_count++] = simplify_start_finish_t {start_index, farthest_point_index};
+            _simplify_stack[_simplify_stack_count++] = simplify_start_finish_t {farthest_point_index, end_index};
         } else {
-            for (int16_t i = start_index + 1; i < end_index; i++) {
+            // if the farthest point was closer than ACCURACY * 0.5 we can simplify all points between start and end
+            for (uint16_t i = start_index + 1; i < end_index; i++) {
                 _simplify_bitmask.clear(i);
             }
         }
@@ -328,30 +338,35 @@ void AP_SafeRTL::detect_simplifications()
 void AP_SafeRTL::detect_loops()
 {
     // if SafeRTL is not active OR if this algorithm has already run to completion OR there's fewer than 3 points in the path
-    if (!_active || _prune_complete || _path_last_index < 3) {
+    if (!_active || _prune_complete || _path_points_count < 4) {
         return;
     }
     const uint32_t start_time_us = AP_HAL::micros();
 
-    while (_prune_current_i < _path_last_index - 1) {
+    while (_prune_current_i < _path_points_count - 2) {
+
         // if this method has run for long enough, exit
         if (AP_HAL::micros() - start_time_us > SAFERTL_LOOP_TIME_US) {
             return;
         }
 
         // this check prevents detection of a loop-within-a-loop
-        int16_t j = MAX(_prune_current_i + 2, _prune_min_j);
-        while (j < _path_last_index) {
+        uint16_t j = MAX(_prune_current_i + 2, _prune_min_j);
+        while (j < _path_points_count-1) {
+            // find the closest distance between two line segments and the mid-point
             dist_point dp = segment_segment_dist(_path[_prune_current_i], _path[_prune_current_i+1], _path[j], _path[j+1]);
-            if (dp.distance <= SAFERTL_PRUNING_DELTA) { // if there is a loop here
+            if (dp.distance < SAFERTL_PRUNING_DELTA) { // if there is a loop here
                 _prune_min_j = j;
-                // if the buffer is full
-                if ( _prunable_loops_last_index >= _prunable_loops_max - 1) {
-                    _prune_complete = true; // pruning is effectively complete now, since there's no reason to continue looking for them.
+                // if the buffer is full, stop trying to prune
+                if ( _prunable_loops_count >= _prunable_loops_max) {
+                    _prune_complete = true;
                     return;
                 }
-                // int promotion rules disallow using i+1 and j+1
-                _prunable_loops[++_prunable_loops_last_index] = {(++_prune_current_i)--,(++j)--,dp.midpoint};
+                // add loop to _prunable_loops array
+                _prunable_loops[_prunable_loops_count].start_index =  _prune_current_i + 1;
+                _prunable_loops[_prunable_loops_count].end_index = j + 1;
+                _prunable_loops[_prunable_loops_count].midpoint = dp.midpoint;
+                _prunable_loops_count++;
             }
             j++;
         }
@@ -373,11 +388,11 @@ bool AP_SafeRTL::routine_cleanup()
 {
     // We only do a routine cleanup if the memory is almost full. Cleanup deletes
     // points which are potentially useful, so it would be bad to clean up if we don't have to
-    if (_path_last_index < MAX(_path_points_max - SAFERTL_CLEANUP_START_MARGIN, 0)) {
+    if (_path_points_count < MAX(_path_points_max - SAFERTL_CLEANUP_START_MARGIN, 0)) {
         return true;
     }
 
-    int16_t potential_amount_to_simplify = _simplify_bitmask.size() - _simplify_bitmask.count();
+    uint16_t potential_amount_to_simplify = _simplify_bitmask.size() - _simplify_bitmask.count();
 
     // if simplifying will remove more than 10 points, just do it
     if (potential_amount_to_simplify >= SAFERTL_CLEANUP_POINT_MIN) {
@@ -389,8 +404,8 @@ bool AP_SafeRTL::routine_cleanup()
         return true;
     }
 
-    int16_t potential_amount_to_prune = 0;
-    for (int16_t i = 0; i <= _prunable_loops_last_index; i++) {
+    uint16_t potential_amount_to_prune = 0;
+    for (uint16_t i = 0; i < _prunable_loops_count; i++) {
         // add 1 at the end, because a pruned loop is always replaced by one new point.
         potential_amount_to_prune += _prunable_loops[i].end_index - _prunable_loops[i].start_index + 1;
     }
@@ -422,7 +437,7 @@ bool AP_SafeRTL::routine_cleanup()
 void AP_SafeRTL::restart_simplification()
 {
     _simplify_complete = false;
-    _simplify_stack_last_index = -1;
+    _simplify_stack_count = 0;
     _simplify_bitmask.setall();
 }
 
@@ -440,7 +455,7 @@ void AP_SafeRTL::restart_pruning()
     _prune_complete = false;
     _prune_current_i = _prune_clean_until;
     _prune_min_j = _prune_clean_until+2;
-    _prunable_loops_last_index = -1; // clear the loops that we've recorded
+    _prunable_loops_count = 0; // clear the loops that we've recorded
 }
 
 // reset pruning algorithm so that it will re-check all points in the path
@@ -453,7 +468,7 @@ void AP_SafeRTL::reset_pruning()
 
 void AP_SafeRTL::zero_points_by_simplify_bitmask()
 {
-    for (int16_t i = 0; i <= _path_last_index; i++) {
+    for (uint16_t i = 0; i < _path_points_count; i++) {
         if (!_simplify_bitmask.get(i)) {
             _simplify_clean_until = MIN(_simplify_clean_until, i-1);
             if (!_path[i].is_zero()) {
@@ -468,17 +483,17 @@ void AP_SafeRTL::zero_points_by_simplify_bitmask()
 void AP_SafeRTL::zero_points_by_loops(uint16_t points_to_delete)
 {
     uint16_t removed_points = 0;
-    for (int16_t i = 0; i <= _prunable_loops_last_index; i++) {
+    for (uint16_t i = 0; i < _prunable_loops_count; i++) {
         prune_loop_t l = _prunable_loops[i];
         _prune_clean_until = MIN(_prune_clean_until, l.start_index-1);
-        for (int16_t j = l.start_index; j < l.end_index; j++) {
+        for (uint16_t j = l.start_index; j < l.end_index; j++) {
             // zero this point if it wasn't already zeroed
             if (!_path[j].is_zero()) {
                 log_action(SRTL_POINT_PRUNE, _path[j]);
                 _path[j].zero();
             }
         }
-        _path[(int16_t)((l.start_index+l.end_index)/2.0)] = l.midpoint;
+        _path[(uint16_t)((l.start_index+l.end_index)/2.0)] = l.midpoint;
         removed_points += l.end_index - l.start_index - 1;
         if (removed_points > points_to_delete) {
             return;
@@ -492,17 +507,17 @@ void AP_SafeRTL::zero_points_by_loops(uint16_t points_to_delete)
 */
 void AP_SafeRTL::remove_empty_points()
 {
-    int16_t src = 0;
-    int16_t dest = 0;
+    uint16_t src = 0;
+    uint16_t dest = 0;
     uint16_t removed = 0;
-    while (++src <= _path_last_index) { // never removes the first point
+    while (++src < _path_points_count) { // never removes the first point
         if (!_path[src].is_zero()) {
             _path[++dest] = _path[src];
         } else {
             removed++;
         }
     }
-    _path_last_index -= removed;
+    _path_points_count -= removed;
 }
 
 /**
@@ -580,5 +595,5 @@ float AP_SafeRTL::point_line_dist(const Vector3f &point, const Vector3f &line1, 
 // logging
 void AP_SafeRTL::log_action(SRTL_Actions action, const Vector3f point)
 {
-    DataFlash_Class::instance()->Log_Write_SRTL(_active, _path_last_index, _path_points_max, action, point);
+    DataFlash_Class::instance()->Log_Write_SRTL(_active, _path_points_count, _path_points_max, action, point);
 }
