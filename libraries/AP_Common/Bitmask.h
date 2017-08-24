@@ -38,7 +38,7 @@ public:
     // set all bits
     void setall(void) {
         for (uint16_t i=0; i<numwords; i++) {
-            bits[i] = 1;
+            bits[i] = 0xffffffff;
         }
     }
 
