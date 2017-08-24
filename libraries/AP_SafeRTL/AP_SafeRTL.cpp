@@ -69,9 +69,9 @@ const AP_Param::GroupInfo AP_SafeRTL::var_info[] = {
 *    the vehicle to pause for a few seconds before initiating the return journey.
 */
 
-AP_SafeRTL::AP_SafeRTL(const AP_AHRS& ahrs, bool logging_enabled) :
+AP_SafeRTL::AP_SafeRTL(const AP_AHRS& ahrs, bool example_mode) :
     _ahrs(ahrs),
-    _logging_enabled(logging_enabled)
+    _logging_enabled(example_mode)
 {
     AP_Param::setup_object_defaults(this, var_info);
     _simplify_bitmask.setall();
@@ -114,9 +114,12 @@ void AP_SafeRTL::init()
 
     _path_points_max = _points_max;
 
-    // register SafeRTL cleanup methods to run in IO thread
-    hal.scheduler->register_io_process(FUNCTOR_BIND_MEMBER(&AP_SafeRTL::detect_simplifications, void));
-    hal.scheduler->register_io_process(FUNCTOR_BIND_MEMBER(&AP_SafeRTL::detect_loops, void));
+    // when running the example sketch, we want the cleanup tasks to run when we tell them to, no in the background (so that they can be timed.)
+    if(_logging_enabled){
+        // register SafeRTL cleanup methods to run in IO thread
+        hal.scheduler->register_io_process(FUNCTOR_BIND_MEMBER(&AP_SafeRTL::detect_simplifications, void));
+        hal.scheduler->register_io_process(FUNCTOR_BIND_MEMBER(&AP_SafeRTL::detect_loops, void));
+    }
 }
 
 // clear return path and set home location.  This should be called as part of the arming procedure
@@ -215,15 +218,15 @@ void AP_SafeRTL::update(bool position_ok, const Vector3f& current_pos)
 // perform thorough cleanup including simplification, pruning and removal of all unnecessary points
 // returns true if the thorough cleanup was completed, false if it has not yet completed
 // this method should be called repeatedly until it returns true before initiating the return journey
-bool AP_SafeRTL::thorough_cleanup()
+bool AP_SafeRTL::thorough_cleanup(bool skip_wait)
 {
     // this should never happen but just in case
     if (!_active) {
         return false;
     }
 
-    // check if we are ready to perform cleanup.  this should be called just before thorough_cleanup just before initiating the RTL
-    if (!_prune_complete || !_simplify_complete) {
+    // check if we are ready to perform cleanup. If skip_wait==true, do it anyways (useful for example sketch).
+    if (!skip_wait && (!_prune_complete || !_simplify_complete)) {
         return false;
     }
 

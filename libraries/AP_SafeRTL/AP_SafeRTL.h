@@ -30,7 +30,7 @@ class AP_SafeRTL {
 public:
 
     // constructor
-    AP_SafeRTL(const AP_AHRS& ahrs, bool logging_enabled);
+    AP_SafeRTL(const AP_AHRS& ahrs, bool example_mode);
 
     // initialise safe rtl including setting up background processes
     void init();
@@ -52,7 +52,7 @@ public:
     // perform thorough cleanup including simplification, pruning and removal of all unnecessary points
     // returns true if the thorough cleanup was completed, false if it has not yet completed
     // this method should be called repeatedly until it returns true before initiating the return journey
-    bool thorough_cleanup();
+    bool thorough_cleanup(bool skip_wait);
 
     // get a point on the path
     const Vector3f& get_point(uint16_t index) const { return _path[index]; }

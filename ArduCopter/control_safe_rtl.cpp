@@ -60,7 +60,7 @@ void Copter::safe_rtl_wait_cleanup_run()
     attitude_control->input_euler_angle_roll_pitch_yaw(wp_nav->get_roll(), wp_nav->get_pitch(), get_auto_heading(),true, get_smoothing_gain());
 
     // check if return path is computed and if yes, begin journey home
-    if (g2.safe_rtl.thorough_cleanup()) {
+    if (g2.safe_rtl.thorough_cleanup(false)) {
         safe_rtl_state = SafeRTL_PathFollow;
     }
 }

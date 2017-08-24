@@ -62,30 +62,31 @@ void loop()
 
     // test detect_simplifications()
     reference_time = AP_HAL::micros();
-    for (uint16_t i = 0; i < 1000; i++) {
+    for (uint16_t i = 0; i < 100; i++) {
         safe_rtl.detect_simplifications();
     }
     run_time = AP_HAL::micros() - reference_time;
-    safe_rtl.thorough_cleanup();
+    safe_rtl.thorough_cleanup(true);
     correct = check_path(test_path_after_simplifying);
     hal.console->printf("rdp:    %s, %u usec\n", correct ? "success" : "fail", run_time);
 
     // test detect_loops()
     reset();
     reference_time = AP_HAL::micros();
-    for (uint16_t i = 0; i < 1000; i++) {
+    for (uint16_t i = 0; i < 100; i++) {
         safe_rtl.detect_loops();
     }
     run_time = AP_HAL::micros() - reference_time;
-    safe_rtl.thorough_cleanup();
+    safe_rtl.thorough_cleanup(true);
     correct = check_path(test_path_after_pruning);
     hal.console->printf("prune:  %s, %u usec\n", correct ? "success" : "fail", run_time);
 
     // test both
     reset();
     reference_time = AP_HAL::micros();
-    while (!(safe_rtl.thorough_cleanup())) {
-        hal.scheduler->delay(10);
+    while (!(safe_rtl.thorough_cleanup(false))) {
+        safe_rtl.detect_loops();
+        safe_rtl.detect_simplifications();
     }
     run_time = AP_HAL::micros() - reference_time;
     correct = check_path(test_path_complete);
