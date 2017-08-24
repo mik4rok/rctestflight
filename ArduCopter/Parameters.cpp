@@ -1025,7 +1025,7 @@ ParametersG2::ParametersG2(void)
 #if ADVANCED_FAILSAFE == ENABLED
     ,afs(copter.mission, copter.barometer, copter.gps, copter.rcmap)
 #endif
-    ,safe_rtl(copter.ahrs)
+    ,safe_rtl(copter.ahrs, true)
 {
     AP_Param::setup_object_defaults(this, var_info);
 }

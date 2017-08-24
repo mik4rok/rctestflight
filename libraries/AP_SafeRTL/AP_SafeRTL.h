@@ -30,7 +30,7 @@ class AP_SafeRTL {
 public:
 
     // constructor
-    AP_SafeRTL(const AP_AHRS& ahrs);
+    AP_SafeRTL(const AP_AHRS& ahrs, bool logging_enabled);
 
     // initialise safe rtl including setting up background processes
     void init();
@@ -115,6 +115,7 @@ private:
     static float point_line_dist(const Vector3f& point, const Vector3f& line1, const Vector3f& line2);
 
     // logging
+    bool _logging_enabled; // This allows SafeRTL to work without logging, which is important to allow the example sketch to run.
     void log_action(SRTL_Actions action, const Vector3f point = Vector3f());
 
     // external references

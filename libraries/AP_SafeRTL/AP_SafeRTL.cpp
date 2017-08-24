@@ -69,8 +69,9 @@ const AP_Param::GroupInfo AP_SafeRTL::var_info[] = {
 *    the vehicle to pause for a few seconds before initiating the return journey.
 */
 
-AP_SafeRTL::AP_SafeRTL(const AP_AHRS& ahrs) :
-    _ahrs(ahrs)
+AP_SafeRTL::AP_SafeRTL(const AP_AHRS& ahrs, bool logging_enabled) :
+    _ahrs(ahrs),
+    _logging_enabled(logging_enabled)
 {
     AP_Param::setup_object_defaults(this, var_info);
     _simplify_bitmask.setall();
@@ -595,5 +596,7 @@ float AP_SafeRTL::point_line_dist(const Vector3f &point, const Vector3f &line1, 
 // logging
 void AP_SafeRTL::log_action(SRTL_Actions action, const Vector3f point)
 {
-    DataFlash_Class::instance()->Log_Write_SRTL(_active, _path_points_count, _path_points_max, action, point);
+    if (_logging_enabled) {
+        DataFlash_Class::instance()->Log_Write_SRTL(_active, _path_points_count, _path_points_max, action, point);
+    }
 }
