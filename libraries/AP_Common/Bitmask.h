@@ -32,6 +32,7 @@ public:
 
     // set given bitnumber
     void set(uint16_t bit) {
+        // ignore an invalid bit number
         if (bit >= numbits) {
             return;
         }
@@ -60,7 +61,7 @@ public:
 
     // clear all bits
     void clearall(void) {
-        memset(bits, 0, numwords);
+        memset(bits, 0, numwords*sizeof(bits[0]));
     }
 
     // return true if given bitnumber is set
