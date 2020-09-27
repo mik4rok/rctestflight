@@ -42,6 +42,7 @@ public:
         QAUTOTUNE     = 22,
         QACRO         = 23,
         THERMAL       = 24,
+        GROUND_EFFECT = 25,
     };
 
     // Constructor
@@ -553,5 +554,22 @@ protected:
 
     bool _enter() override;
 };
+
+class ModeGroundEffect : public Mode
+{
+public:
+
+    Mode::Number mode_number() const override { return Mode::Number::GROUND_EFFECT; }
+    const char *name() const override { return "GROUND_EFFECT"; }
+    const char *name4() const override { return "GDEF"; }
+
+    // methods that affect movement of the vehicle in this mode
+    void update() override;
+
+protected:
+
+    bool _enter() override;
+};
+
 
 #endif

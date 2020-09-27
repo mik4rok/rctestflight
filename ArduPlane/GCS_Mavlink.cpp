@@ -36,6 +36,7 @@ MAV_MODE GCS_MAVLINK_Plane::base_mode() const
     case Mode::Number::QLAND:
     case Mode::Number::CRUISE:
     case Mode::Number::QAUTOTUNE:
+    case Mode::Number::GROUND_EFFECT:
         _base_mode = MAV_MODE_FLAG_STABILIZE_ENABLED;
         break;
     case Mode::Number::AUTO:

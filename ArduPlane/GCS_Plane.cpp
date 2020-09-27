@@ -64,6 +64,7 @@ void GCS_Plane::update_vehicle_sensor_status_flags(void)
     case Mode::Number::QAUTOTUNE:
     case Mode::Number::FLY_BY_WIRE_B:
     case Mode::Number::CRUISE:
+    case Mode::Number::GROUND_EFFECT:
         rate_controlled = true;
         attitude_stabilized = true;
         break;
