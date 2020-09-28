@@ -6,6 +6,7 @@
 #include <AP_Common/Location.h>
 #include <AP_Soaring/AP_Soaring.h>
 #include <AP_ADSB/AP_ADSB.h>
+#include <AC_PID/AC_P.h>
 
 class Mode
 {
@@ -569,6 +570,10 @@ public:
 protected:
 
     bool _enter() override;
+
+private:
+
+    AC_P pAlt2Throttle;
 };
 
 
