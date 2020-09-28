@@ -17,7 +17,6 @@ static constexpr int16_t GROUND_EFFECT_STEADY_THROTTLE{50};
 *   The nose-up pitch to hold the vehicle at, in centidegrees
 *   Consider that a steep pitch might cause the rangefinder to give bad readings.
 *   For example, the FoV of the VL53L0X is 25 degrees, so pitching anywhere near 25/2 will cause trouble.
-*   This number should be negative FIXME should this be negative? Test in Sitl probably
 */
 static constexpr int32_t GROUND_EFFECT_PITCH_CENTIDEGREES{1000};
 
