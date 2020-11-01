@@ -637,6 +637,31 @@ AP_RangeFinder_Backend *RangeFinder::find_instance(enum Rotation orientation) co
     return nullptr;
 }
 
+// find first range finder instance with the specified orientation
+AP_RangeFinder_Backend *RangeFinder::find_instance_with_mm_prec(enum Rotation orientation) const
+{
+    // first try for a rangefinder that is in range
+    for (uint8_t i=0; i<num_instances; i++) {
+        AP_RangeFinder_Backend *backend = get_backend(i);
+        if (backend != nullptr &&
+            backend->orientation() == orientation &&
+            backend->status() == Status::Good &&
+            backend->supports_mm_precision()) {
+            return backend;
+        }
+    }
+    // if none in range then return first with correct orientation
+    for (uint8_t i=0; i<num_instances; i++) {
+        AP_RangeFinder_Backend *backend = get_backend(i);
+        if (backend != nullptr &&
+            backend->orientation() == orientation &&
+            backend->supports_mm_precision()) {
+            return backend;
+        }
+    }
+    return nullptr;
+}
+
 uint16_t RangeFinder::distance_cm_orient(enum Rotation orientation) const
 {
     AP_RangeFinder_Backend *backend = find_instance(orientation);
@@ -648,7 +673,7 @@ uint16_t RangeFinder::distance_cm_orient(enum Rotation orientation) const
 
 uint16_t RangeFinder::distance_mm_orient(enum Rotation orientation) const
 {
-    AP_RangeFinder_Backend *backend = find_instance(orientation);
+    AP_RangeFinder_Backend *backend = find_instance_with_mm_prec(orientation);
     if (backend == nullptr) {
         return 0;
     }
@@ -698,6 +723,12 @@ bool RangeFinder::has_data_orient(enum Rotation orientation) const
         return false;
     }
     return backend->has_data();
+}
+
+bool RangeFinder::has_mm_prec_orient(enum Rotation orientation) const
+{
+    AP_RangeFinder_Backend *backend = find_instance_with_mm_prec(orientation);
+    return backend != nullptr;
 }
 
 uint8_t RangeFinder::range_valid_count_orient(enum Rotation orientation) const

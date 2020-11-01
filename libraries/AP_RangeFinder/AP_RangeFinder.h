@@ -151,6 +151,9 @@ public:
     // find first range finder instance with the specified orientation
     AP_RangeFinder_Backend *find_instance(enum Rotation orientation) const;
 
+    // find first range finder instance with the specified orientation that supports mm precision
+    AP_RangeFinder_Backend *find_instance_with_mm_prec(enum Rotation orientation) const;
+
     AP_RangeFinder_Backend *get_backend(uint8_t id) const;
 
     // get rangefinder type for an ID
@@ -174,6 +177,7 @@ public:
     MAV_DISTANCE_SENSOR get_mav_distance_sensor_type_orient(enum Rotation orientation) const;
     RangeFinder::Status status_orient(enum Rotation orientation) const;
     bool has_data_orient(enum Rotation orientation) const;
+    bool has_mm_prec_orient(enum Rotation orientation) const;
     uint8_t range_valid_count_orient(enum Rotation orientation) const;
     const Vector3f &get_pos_offset_orient(enum Rotation orientation) const;
     uint32_t last_reading_ms(enum Rotation orientation) const;
