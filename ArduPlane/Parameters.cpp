@@ -1099,6 +1099,10 @@ const AP_Param::Info Plane::var_info[] = {
     // @Path: ../libraries/AP_Vehicle/AP_Vehicle.cpp
     { AP_PARAM_GROUP, "", Parameters::k_param_vehicle, (const void *)&plane, {group_info : AP_Vehicle::var_info} },
 
+    GSCALAR(gndEffect_steady_thr, "GNDEFCT_THR", GNDEFCT_STEADY_THROTTLE_DEFAULT),
+    GSCALAR(gndEffect_steady_alt, "GNDEFCT_ALT", GNDEFCT_STEADY_ALT_DEFAULT),
+    GSCALAR(gndEffect_kP, "GNDEFCT_P", GNDEFCT_P_DEFAULT),
+
     AP_VAREND
 };
 

@@ -307,3 +307,17 @@
 #ifndef FS_EKF_THRESHOLD_DEFAULT
  # define FS_EKF_THRESHOLD_DEFAULT      0.8f    // EKF failsafe's default compass and velocity variance threshold above which the EKF failsafe will be triggered
 #endif
+
+//////////////////////////////////////////////////////////////////////////////
+//  Ground Effect
+#ifndef GNDEFCT_STEADY_THROTTLE_DEFAULT
+ # define GNDEFCT_STEADY_THROTTLE_DEFAULT      70
+#endif
+
+#ifndef GNDEFCT_STEADY_ALT_DEFAULT
+ # define GNDEFCT_STEADY_ALT_DEFAULT      7.0
+#endif
+
+#ifndef GNDEFCT_P_DEFAULT
+ # define GNDEFCT_P_DEFAULT      7.0
+#endif

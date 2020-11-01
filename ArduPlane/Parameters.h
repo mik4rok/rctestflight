@@ -342,12 +342,20 @@ public:
         k_param_mixing_offset,
         k_param_dspoiler_rud_rate,
 
+        k_param_gndEffect_steady_thr = 250,
+        k_param_gndEffect_steady_alt = 251,
+        k_param_gndEffect_kP = 252,
+
         k_param_logger = 253, // Logging Group
 
         // 254,255: reserved
 
         k_param_vehicle = 257, // vehicle common block of parameters
     };
+
+    AP_Int16 gndEffect_steady_thr;
+    AP_Float gndEffect_steady_alt;
+    AP_Float gndEffect_kP;
 
     AP_Int16 format_version;
 
