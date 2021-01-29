@@ -61,7 +61,7 @@ const AP_Param::GroupInfo AP_VideoTX::var_info[] = {
     // @DisplayName: Video Transmitter Options
     // @Description: Video Transmitter Options.
     // @User: Advanced
-    // @Bitmask: 0:Pitmode
+    // @Bitmask: 0:Pitmode,1:Unlocked
     AP_GROUPINFO("OPTIONS",  6, AP_VideoTX, _options, 0),
 
     AP_GROUPEND
@@ -104,6 +104,7 @@ bool AP_VideoTX::init(void)
     _current_power = _power_mw;
     _current_band = _band;
     _current_channel = _channel;
+    _current_frequency = _frequency_mhz;
     _current_options = _options;
     _current_enabled = _enabled;
     _initialized = true;
@@ -171,6 +172,38 @@ uint8_t AP_VideoTX::get_configured_power_dbm() const {
     }
 }
 
+// get the power "level"
+uint8_t AP_VideoTX::get_configured_power_level() const {
+    if (_power_mw < 26) {
+        return 0;
+    } else if (_power_mw < 201) {
+        return 1;
+    } else if (_power_mw < 501) {
+        return 2;
+    } else {    // 800
+        return 3;
+    }
+}
+
+// set the power "level"
+void AP_VideoTX::set_power_level(uint8_t level) {
+    switch (level) {
+    case 1:
+        _current_power = 200;
+        break;
+    case 2:
+        _current_power = 500;
+        break;
+    case 3:
+        _current_power = 800;
+        break;
+    case 0:
+    default:
+        _current_power = 25;
+        break;
+    }
+}
+
 // set the current channel
 void AP_VideoTX::set_enabled(bool enabled) {
     _current_enabled = enabled;
@@ -196,7 +229,27 @@ bool AP_VideoTX::have_params_changed() const
     return update_power()
         || update_band()
         || update_channel()
+        || update_frequency()
         || update_options();
+}
+
+// update the configured frequency to match the channel and band
+void AP_VideoTX::update_configured_frequency()
+{
+    _frequency_mhz.set_and_save(get_frequency_mhz(_band, _channel));
+}
+
+// update the configured channel and band to match the frequency
+void AP_VideoTX::update_configured_channel_and_band()
+{
+    VideoBand band;
+    uint8_t channel;
+    if (get_band_and_channel(_frequency_mhz, band, channel)) {
+        _band.set_and_save(band);
+        _channel.set_and_save(channel);
+    } else {
+        update_configured_frequency();
+    }
 }
 
 // set the current configured values if not currently set in storage
@@ -207,6 +260,24 @@ void AP_VideoTX::set_defaults()
         return;
     }
 
+    // check that our current view of freqency matches band/channel
+    // if not then force one to be correct
+    uint16_t calced_freq = get_frequency_mhz(_current_band, _current_channel);
+    if (_current_frequency != calced_freq) {
+        if (_current_frequency > 0) {
+            VideoBand band;
+            uint8_t channel;
+            if (get_band_and_channel(_current_frequency, band, channel)) {
+                _current_band = band;
+                _current_channel = channel;
+            } else {
+                _current_frequency = calced_freq;
+            }
+        } else {
+            _current_frequency = calced_freq;
+        }
+    }
+
     if (!_options.configured()) {
         _options.set_and_save(_current_options);
     }
@@ -214,10 +285,22 @@ void AP_VideoTX::set_defaults()
         _channel.set_and_save(_current_channel);
     }
     if (!_band.configured()) {
-        _band.set_and_save(_current_band);
+        _frequency_mhz.set_and_save(_current_band);
     }
     if (!_power_mw.configured()) {
         _power_mw.set_and_save(_current_power);
+    }
+    if (!_frequency_mhz.configured()) {
+        _frequency_mhz.set_and_save(_current_frequency);
+    }
+
+    // Now check that the user didn't screw up by selecting incompatible options
+    if (_frequency_mhz != get_frequency_mhz(_band, _channel)) {
+        if (_frequency_mhz > 0) {
+            update_configured_channel_and_band();
+        } else {
+            update_configured_frequency();
+        }
     }
 
     _defaults_set = true;

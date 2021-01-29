@@ -40,7 +40,9 @@ public:
     static const struct AP_Param::GroupInfo var_info[];
 
     enum class VideoOptions {
-        VTX_PITMODE = 1 << 0
+        VTX_PITMODE         = (1 << 0), // this means in-range pitmode as well as on/off
+        VTX_UNLOCKED        = (1 << 1),
+        VTX_OUTRANGE_PITMODE = (1 << 2)
     };
 
     enum VideoBand {
@@ -58,15 +60,21 @@ public:
     static uint16_t get_frequency_mhz(uint8_t band, uint8_t channel) { return VIDEO_CHANNELS[band][channel]; }
     static bool get_band_and_channel(uint16_t freq, VideoBand& band, uint8_t& channel);
 
-    void set_frequency_mhz(uint16_t freq) { _frequency_mhz.set_and_save(freq); }
-    uint16_t get_frequency_mhz() const { return _frequency_mhz; }
+    void set_frequency_mhz(uint16_t freq) { _current_frequency = freq; }
+    void set_configured_frequency_mhz(uint16_t freq) { _frequency_mhz.set_and_save_ifchanged(freq); }
+    uint16_t get_frequency_mhz() const { return _current_frequency; }
+    uint16_t get_configured_frequency_mhz() const { return _frequency_mhz; }
+    bool update_frequency() const { return _defaults_set && _frequency_mhz != _current_frequency; }
+    void update_configured_frequency();
     // get / set power level
     void set_power_mw(uint16_t power) { _current_power = power; }
+    void set_power_level(uint8_t level);
     void set_power_dbm(uint8_t power);
     void set_configured_power_mw(uint16_t power);
     uint16_t get_configured_power_mw() const { return _power_mw; }
     uint16_t get_power_mw() const { return _current_power; }
     uint8_t get_configured_power_dbm() const;
+    uint8_t get_configured_power_level() const;
     bool update_power() const { return _defaults_set && _power_mw != _current_power; }
     // get / set the frequency band
     void set_band(uint8_t band) { _current_band = band; }
@@ -80,6 +88,7 @@ public:
     uint8_t get_configured_channel() const { return _channel; }
     uint8_t get_channel() const { return _current_channel; }
     bool update_channel() const { return _defaults_set && _channel != _current_channel; }
+    void update_configured_channel_and_band();
     // get / set vtx option
     void set_options(uint8_t options) { _current_options = options; }
     void set_configured_options(uint8_t options) { _options.set_and_save_ifchanged(options); }
@@ -101,7 +110,8 @@ public:
 private:
     // channel frequency
     AP_Int16 _frequency_mhz;
-    
+    uint16_t _current_frequency;
+
     // power output in mw
     AP_Int16 _power_mw;
     uint16_t _current_power;
