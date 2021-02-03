@@ -24,10 +24,8 @@
 
 #ifdef SA_DEBUG
 # define debug(fmt, args...)	do { hal.console->printf("SA: " fmt "\n", ##args); } while (0)
-#define TOGGLE_PIN(pin) do { palToggleLine(HAL_GPIO_LINE_GPIO ## pin); } while (0)
 #else
 # define debug(fmt, args...)	do {} while(0)
-#define TOGGLE_PIN(pin) do { } while (0)
 #endif
 
 extern const AP_HAL::HAL &hal;
@@ -57,7 +55,6 @@ bool AP_SmartAudio::init()
         _port->set_flow_control(AP_HAL::UARTDriver::FLOW_CONTROL_DISABLE);
         _port->set_options((_port->get_options() & ~AP_HAL::UARTDriver::OPTION_RXINV)
             | AP_HAL::UARTDriver::OPTION_HDPLEX | AP_HAL::UARTDriver::OPTION_PULLDOWN_TX | AP_HAL::UARTDriver::OPTION_PULLDOWN_RX);
-        hal.gpio->pinMode(54, 1);
         if (!hal.scheduler->thread_create(FUNCTOR_BIND_MEMBER(&AP_SmartAudio::loop, void),
                                           "SmartAudio",
                                           512, AP_HAL::Scheduler::PRIORITY_IO, -1)) {
@@ -309,9 +306,7 @@ bool AP_SmartAudio::read_response(uint8_t *response_buffer)
     }
 
 #ifdef SA_DEBUG
-    TOGGLE_PIN(54);
     print_bytes_to_hex_string("read_response():", response_buffer, incoming_bytes_count,(_inline_buffer_length-incoming_bytes_count)>=0?(_inline_buffer_length-incoming_bytes_count):0);
-    TOGGLE_PIN(54);
 #endif
     _is_waiting_response=false;
 
