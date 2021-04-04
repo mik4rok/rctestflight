@@ -58,11 +58,7 @@ bool ModeGroundEffect::_enter()
     // if(plane.rangefinder.distance_cm_orient(ROTATION_PITCH_270) > 3 * GROUND_EFFECT_TARGET_ALT_CM){
     //     return false;
     // }
-
-    // Set the gain for the P controller
-    // pAlt2Throttle(GROUND_EFFECT_CONTROLLER_KP);
-    pAlt2Throttle(plane.g.gndEffect_kP);
-
+    
     return true;
 }
 
@@ -75,47 +71,27 @@ void ModeGroundEffect::update()
     // Pilot has standard manual control of rudder
     plane.steering_control.rudder = plane.channel_rudder->get_control_in_zero_dz();
 
-    /*
-    *   TODO
-    *   Consider filtering rangefinder output. See ../libraries/Filter
-    *   This method runs at 400Hz. Rangefinder probably senses at 30Hz
-    *   Also handle repeated bad readings somehow. Maybe disarm
-    *    Plane scheduler polls rangefinder driver for new sensor data at 50Hz.
-    *    But VL53L0X doesn't produce data that fast, so sometimes calls result in no update.
-    *    The math around the 'timing budget' isn't exactly clear bc of overhead.
-    *    But the datasheet says 30Hz is normal, 50Hz is possible with lower accuracy.
-    */
-  
-    uint16_t altMm = plane.rangefinder.distance_mm_orient(ROTATION_PITCH_270);
-
-    // No good reading recently
-    // if(altMm == 0){ // TODO also check if currently armed
-    //     uint32_t timeSinceGoodReading = AP_HAL::millis() - plane.rangefinder.last_reading_ms(ROTATION_PITCH_270);
-    //     if(timeSinceGoodReading > 2000){
-    //         // throttle 0
-    //         SRV_Channels::set_output_scaled(SRV_Channel::k_throttle, 0);
-    //         plane.arming.disarm(AP_Arming::Method::GROUND_EFFECT_MODE_BAD_RANGEFINDER);
-    //         gcs().send_text(MAV_SEVERITY_NOTICE,"Disarmed: Bad rangefinder health");
-    //         return;
-    //     }
-    // }
-
     // If the rc throttle input is zero, don't run throttle controller
     // This allows the user to stop flight by reflexively cutting the throttle
     if(plane.get_throttle_input(false) == 0){
         SRV_Channels::set_output_scaled(SRV_Channel::k_throttle, 0);
         return;
     }
+    
+    // This method runs at 400Hz. Rangefinder probably senses at 30Hz
+    uint16_t altMm = plane.rangefinder.distance_mm_orient(ROTATION_PITCH_270);
 
-    // float error = GROUND_EFFECT_TARGET_ALT_CM - ((float) altMm / 10.0);
-    float error = plane.g.gndEffect_steady_alt - ((float) altMm / 10.0);
+    // Slope: How much should throttle % decrease for every mm increase in alt
+    float   m = -((float) (plane.g.gndEffect_thr_max - plane.g.gndEffect_thr_min)) / ((float) (plane.g.gndEffect_alt_max - plane.g.gndEffect_alt_min));
+    // Alt: The altitude in mm above the minimum altitude
+    float   x = altMm - plane.g.gndEffect_alt_min;
+    // Intercept: How many % should the throttle be shifted up
+    int16_t b = plane.g.gndEffect_thr_min;
 
-    // int16_t commanded_throttle = GROUND_EFFECT_STEADY_THROTTLE + ((int16_t) pAlt2Throttle.get_p(error));
-    int16_t commanded_throttle = plane.g.gndEffect_steady_thr + ((int16_t) pAlt2Throttle.get_p(error));
+    int16_t y = m*x+b;
 
-    // commanded_throttle should be in the range 0...100
-    commanded_throttle = constrain_int16(commanded_throttle, 0, 100);
-
+    int16_t commanded_throttle = constrain_int16(y, plane.g.gndEffect_thr_min, plane.g.gndEffect_thr_max);
+    commanded_throttle = constrain_int16(y, 0, 100);
     SRV_Channels::set_output_scaled(SRV_Channel::k_throttle, commanded_throttle);
 }
 

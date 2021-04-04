@@ -337,14 +337,15 @@ public:
         k_param_pidServoRudder, // unused
         k_param_pidTeThrottle, // unused
         k_param_pidNavPitchAltitude, // unused
-        k_param_pidWheelSteer, // unused
+        // k_param_pidWheelSteer, // unused
+        k_param_gndEffect_alt_max = 247, // just replaced the previous unused one. not sure if that's kosher
 
         k_param_mixing_offset,
         k_param_dspoiler_rud_rate,
 
-        k_param_gndEffect_steady_thr = 250,
-        k_param_gndEffect_steady_alt = 251,
-        k_param_gndEffect_kP = 252,
+        k_param_gndEffect_thr_min = 250,
+        k_param_gndEffect_thr_max = 251,
+        k_param_gndEffect_alt_min = 252,
 
         k_param_logger = 253, // Logging Group
 
@@ -353,9 +354,10 @@ public:
         k_param_vehicle = 257, // vehicle common block of parameters
     };
 
-    AP_Int16 gndEffect_steady_thr;
-    AP_Float gndEffect_steady_alt;
-    AP_Float gndEffect_kP;
+    AP_Int16 gndEffect_thr_min;
+    AP_Int16 gndEffect_thr_max;
+    AP_Int16 gndEffect_alt_min;
+    AP_Int16 gndEffect_alt_max;
 
     AP_Int16 format_version;
 

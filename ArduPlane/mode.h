@@ -571,9 +571,6 @@ protected:
 
     bool _enter() override;
 
-private:
-
-    AC_P pAlt2Throttle;
 };
 
 
