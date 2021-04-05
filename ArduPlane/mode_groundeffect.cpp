@@ -18,7 +18,7 @@
 *   Consider that a steep pitch might cause the rangefinder to give bad readings.
 *   For example, the FoV of the VL53L0X is 25 degrees, so pitching anywhere near 25/2 will cause trouble.
 */
-static constexpr int32_t GROUND_EFFECT_PITCH_CENTIDEGREES{1000};
+static constexpr int32_t GROUND_EFFECT_PITCH_CENTIDEGREES{0};
 
 /*
 *   The P gain for the Alt2Throttle P controller.
@@ -82,16 +82,16 @@ void ModeGroundEffect::update()
     uint16_t altMm = plane.rangefinder.distance_mm_orient(ROTATION_PITCH_270);
 
     // Slope: How much should throttle % decrease for every mm increase in alt
-    float   m = -((float) (plane.g.gndEffect_thr_max - plane.g.gndEffect_thr_min)) / ((float) (plane.g.gndEffect_alt_max - plane.g.gndEffect_alt_min));
+    float   m = -((float) (plane.g.gndEffect_thr_max - plane.g.gndEffect_thr_min)) / ((float) (plane.g.gndEffect_alt_max - plane.g.gndEffect_alt_min));// -(80-10)/(220-100) = 90/120=-0.75
     // Alt: The altitude in mm above the minimum altitude
-    float   x = altMm - plane.g.gndEffect_alt_min;
+    float   x = altMm - plane.g.gndEffect_alt_min; // alt between 100 and 220
     // Intercept: How many % should the throttle be shifted up
-    int16_t b = plane.g.gndEffect_thr_min;
+    int16_t b = plane.g.gndEffect_thr_max;
 
     int16_t y = m*x+b;
 
     int16_t commanded_throttle = constrain_int16(y, plane.g.gndEffect_thr_min, plane.g.gndEffect_thr_max);
-    commanded_throttle = constrain_int16(y, 0, 100);
+    commanded_throttle = constrain_int16(commanded_throttle, 0, 100);
     SRV_Channels::set_output_scaled(SRV_Channel::k_throttle, commanded_throttle);
 }
 
