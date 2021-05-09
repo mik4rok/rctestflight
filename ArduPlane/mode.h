@@ -567,6 +567,8 @@ public:
     // methods that affect movement of the vehicle in this mode
     void update() override;
 
+    int8_t desired_flap_percentage;
+
 protected:
 
     bool _enter() override;

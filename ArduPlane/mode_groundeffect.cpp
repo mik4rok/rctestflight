@@ -1,33 +1,6 @@
 #include "mode.h"
 #include "Plane.h"
 
-/*
-*   The desired altitude to hover at, in centimeters.
-*   This number should probably be around 1/4 of the wingspan or less.
-*/
-// static constexpr float GROUND_EFFECT_TARGET_ALT_CM{7.0};
-
-/*
-*   The steady-state throttle required at the given altitude to remain in that altitude.
-*   This number must be between 0 and 100.
-*/
-// static constexpr int16_t GROUND_EFFECT_STEADY_THROTTLE{70};
-
-/*
-*   The nose-up pitch to hold the vehicle at, in centidegrees
-*   Consider that a steep pitch might cause the rangefinder to give bad readings.
-*   For example, the FoV of the VL53L0X is 25 degrees, so pitching anywhere near 25/2 will cause trouble.
-*/
-// static constexpr int32_t GROUND_EFFECT_PITCH_CENTIDEGREES{0};
-
-/*
-*   The P gain for the Alt2Throttle P controller.
-*   For every centimeter below the target altitude, throttle increases by this many percent
-*/
-// static constexpr float GROUND_EFFECT_CONTROLLER_KP{7.0}; // 80 at the ground
-
-// TODO make these real parameters
-
 bool ModeGroundEffect::_enter()
 {
     plane.throttle_allows_nudging = false;
@@ -67,9 +40,8 @@ void ModeGroundEffect::update()
     // Pilot has standard manual control of rudder
     plane.steering_control.rudder = plane.channel_rudder->get_control_in_zero_dz();
 
-    // TODO not sure if this is how you control the flaperons
-    int8_t flap_percentage = (uint8_t) constrain_int16(plane.g2.gndefct_flaps.get_pid(errorMm), -100, 100);
-    plane.flaperon_update(flap_percentage);
+    // flaps are actually set in servos.cpp using this number
+    desired_flap_percentage = (uint8_t) constrain_int16(plane.g2.gndefct_flaps.get_pid(errorMm), -100, 100);
 
     // If the rc throttle input is zero, don't run throttle controller
     // This allows the user to stop flight by reflexively cutting the throttle

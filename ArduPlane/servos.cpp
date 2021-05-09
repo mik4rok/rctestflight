@@ -629,6 +629,10 @@ void Plane::set_servos_flaps(void)
         }
     }
 
+    if(plane.get_mode() == Mode::Number::GROUND_EFFECT) {
+        auto_flap_percent = -plane.mode_groundeffect.desired_flap_percentage;
+    }
+
     // manual flap input overrides auto flap input
     if (abs(manual_flap_percent) > auto_flap_percent) {
         auto_flap_percent = manual_flap_percent;
