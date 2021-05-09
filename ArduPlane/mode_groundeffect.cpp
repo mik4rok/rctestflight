@@ -18,7 +18,7 @@
 *   Consider that a steep pitch might cause the rangefinder to give bad readings.
 *   For example, the FoV of the VL53L0X is 25 degrees, so pitching anywhere near 25/2 will cause trouble.
 */
-static constexpr int32_t GROUND_EFFECT_PITCH_CENTIDEGREES{0};
+// static constexpr int32_t GROUND_EFFECT_PITCH_CENTIDEGREES{0};
 
 /*
 *   The P gain for the Alt2Throttle P controller.
@@ -39,37 +39,37 @@ bool ModeGroundEffect::_enter()
         return false;
     } 
 
-    // // Verify that the rangefinder is capable of measuring short distances. This fails with most rangefinders.
-    // if(plane.rangefinder.min_distance_cm_orient(ROTATION_PITCH_270) >= 10){
-    //     return false;
-    // }
+    // The nominal throttle (throttle at zero error) should be the midpoint between the high and low throttle parameters
+    _thr_ff = (plane.g.gndEffect_thr_max + plane.g.gndEffect_thr_min)/2.f;
 
-    // // Verify rangefinder health: this fails if we are low or high or no sensor data
-    // if(plane.rangefinder.status_orient(ROTATION_PITCH_270) != RangeFinder::Status::Good){
-    //     return false;
-    // }
+    // The desired altitude should be the midpoint between the high and low altitude parameters
+    _alt_desired_mm = (plane.g.gndEffect_alt_max + plane.g.gndEffect_alt_min)/2;
 
-    // // Verify rangefinder health: Last reading should not be more than 0.5 seconds old
-    // if((AP_HAL::millis() - plane.rangefinder.last_reading_ms(ROTATION_PITCH_270)) > 500){
-    //     return false;
-    // }
+    float new_thr_p = ((float) (plane.g.gndEffect_thr_max - plane.g.gndEffect_thr_min)) / ((float) (plane.g.gndEffect_alt_max - plane.g.gndEffect_alt_min));
+    plane.g2.gndefct_thr.kP(new_thr_p);
 
-    // // Verify that we are somewhat close to the desired ground effect altitude
-    // if(plane.rangefinder.distance_cm_orient(ROTATION_PITCH_270) > 3 * GROUND_EFFECT_TARGET_ALT_CM){
-    //     return false;
-    // }
-    
+    plane.g2.gndefct_thr.reset();
+    plane.g2.gndefct_ele.reset();
+    plane.g2.gndefct_flaps.reset();
+
     return true;
 }
 
 void ModeGroundEffect::update()
 {
-    // Desired roll is flat (0 hundredths of a degree). Note that the pilot can have some authority if stick_mixing is enabled
+    // This method runs at 400Hz. Rangefinder probably senses at 30Hz
+    int16_t errorMm = _alt_desired_mm - plane.rangefinder.distance_mm_orient(ROTATION_PITCH_270);
+
+    // Wings level. Note that the pilot can also have some authority if stick_mixing is enabled
     plane.nav_roll_cd = 0;
     // Desired nose-up pitch
-    plane.nav_pitch_cd = GROUND_EFFECT_PITCH_CENTIDEGREES;
+    plane.nav_pitch_cd = (int16_t) plane.g2.gndefct_ele.get_pid(errorMm);
     // Pilot has standard manual control of rudder
     plane.steering_control.rudder = plane.channel_rudder->get_control_in_zero_dz();
+
+    // TODO not sure if this is how you control the flaperons
+    int8_t flap_percentage = (uint8_t) constrain_int16(plane.g2.gndefct_flaps.get_pid(errorMm), -100, 100);
+    plane.flaperon_update(flap_percentage);
 
     // If the rc throttle input is zero, don't run throttle controller
     // This allows the user to stop flight by reflexively cutting the throttle
@@ -77,21 +77,10 @@ void ModeGroundEffect::update()
         SRV_Channels::set_output_scaled(SRV_Channel::k_throttle, 0);
         return;
     }
-    
-    // This method runs at 400Hz. Rangefinder probably senses at 30Hz
-    uint16_t altMm = plane.rangefinder.distance_mm_orient(ROTATION_PITCH_270);
 
-    // Slope: How much should throttle % decrease for every mm increase in alt
-    float   m = -((float) (plane.g.gndEffect_thr_max - plane.g.gndEffect_thr_min)) / ((float) (plane.g.gndEffect_alt_max - plane.g.gndEffect_alt_min));// -(80-10)/(220-100) = 90/120=-0.75
-    // Alt: The altitude in mm above the minimum altitude
-    float   x = altMm - plane.g.gndEffect_alt_min; // alt between 100 and 220
-    // Intercept: How many % should the throttle be shifted up
-    int16_t b = plane.g.gndEffect_thr_max;
+    int16_t throttle_command = plane.g2.gndefct_thr.get_pid(errorMm) + _thr_ff;
 
-    int16_t y = m*x+b;
-
-    int16_t commanded_throttle = constrain_int16(y, plane.g.gndEffect_thr_min, plane.g.gndEffect_thr_max);
+    int16_t commanded_throttle = constrain_int16(throttle_command, plane.g.gndEffect_thr_min, plane.g.gndEffect_thr_max);
     commanded_throttle = constrain_int16(commanded_throttle, 0, 100);
     SRV_Channels::set_output_scaled(SRV_Channel::k_throttle, commanded_throttle);
 }
-

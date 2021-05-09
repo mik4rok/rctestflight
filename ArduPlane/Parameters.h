@@ -596,6 +596,10 @@ public:
 
     // min initial climb in RTL
     AP_Int16        rtl_climb_min;
+
+    PID gndefct_thr;
+    PID gndefct_ele;
+    PID gndefct_flaps;
 };
 
 extern const AP_Param::Info var_info[];

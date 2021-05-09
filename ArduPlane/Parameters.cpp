@@ -1300,6 +1300,10 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     AP_SUBGROUPINFO(guidedHeading, "GUIDED_", 28, ParametersG2, AC_PID),
 #endif // OFFBOARD_GUIDED == ENABLED
 
+    AP_SUBGROUPINFO(gndefct_thr, "GNDEFCT_THR_", 29, ParametersG2, PID),
+    AP_SUBGROUPINFO(gndefct_ele, "GNDEFCT_ELE_", 30, ParametersG2, PID),
+    AP_SUBGROUPINFO(gndefct_flaps, "GNDEFCT_FLP_", 31, ParametersG2, PID),
+
     AP_GROUPEND
 };
 
