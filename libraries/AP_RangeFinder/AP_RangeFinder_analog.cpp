@@ -112,6 +112,7 @@ void AP_RangeFinder_analog::update(void)
     if (dist_m < 0) {
         dist_m = 0;
     }
+    state.distance_mm = dist_m * 1000.0f;
     state.distance_cm = dist_m * 100.0f;
     state.last_reading_ms = AP_HAL::millis();
 
