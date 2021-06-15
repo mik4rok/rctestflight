@@ -10,6 +10,8 @@ public:
 
     using AP_RangeFinder_Backend_Serial::AP_RangeFinder_Backend_Serial;
 
+    bool supports_mm_precision() const override { return true; }
+
 protected:
 
     virtual MAV_DISTANCE_SENSOR _get_mav_distance_sensor_type() const override {

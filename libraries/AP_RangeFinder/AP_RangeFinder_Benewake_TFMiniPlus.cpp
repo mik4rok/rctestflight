@@ -66,12 +66,13 @@ bool AP_RangeFinder_Benewake_TFMiniPlus::init()
 {
     const uint8_t CMD_FW_VERSION[] =         { 0x5A, 0x04, 0x01, 0x5F };
     const uint8_t CMD_SYSTEM_RESET[] =       { 0x5A, 0x04, 0x04, 0x62 };
-    const uint8_t CMD_OUTPUT_FORMAT_CM[] =   { 0x5A, 0x05, 0x05, 0x01, 0x65 };
+    // const uint8_t CMD_OUTPUT_FORMAT_CM[] =   { 0x5A, 0x05, 0x05, 0x01, 0x65 };
+    const uint8_t CMD_OUTPUT_FORMAT_MM[] =   { 0x5A, 0x05, 0x05, 0x06, 0x6A };
     const uint8_t CMD_ENABLE_DATA_OUTPUT[] = { 0x5A, 0x05, 0x07, 0x01, 0x67 };
     const uint8_t CMD_FRAME_RATE_100HZ[] =   { 0x5A, 0x06, 0x03, 0x64, 0x00, 0xC7 };
     const uint8_t CMD_SAVE_SETTINGS[] =      { 0x5A, 0x04, 0x11, 0x6F };
     const uint8_t *cmds[] = {
-        CMD_OUTPUT_FORMAT_CM,
+        CMD_OUTPUT_FORMAT_MM,
         CMD_FRAME_RATE_100HZ,
         CMD_ENABLE_DATA_OUTPUT,
         CMD_SAVE_SETTINGS,
@@ -139,7 +140,8 @@ void AP_RangeFinder_Benewake_TFMiniPlus::update()
     WITH_SEMAPHORE(_sem);
 
     if (accum.count > 0) {
-        state.distance_cm = accum.sum / accum.count;
+        state.distance_cm = (accum.sum / accum.count)/10;
+        state.distance_mm = accum.sum / accum.count;
         state.last_reading_ms = AP_HAL::millis();
         accum.sum = 0;
         accum.count = 0;
@@ -160,7 +162,7 @@ bool AP_RangeFinder_Benewake_TFMiniPlus::process_raw_measure(le16_t distance_raw
         return false;
     }
 
-    output_distance_cm = constrain_int16(output_distance_cm, 10, 1200);
+    output_distance_cm = constrain_int16(output_distance_cm, 10, 12000);
 
     return true;
 }
