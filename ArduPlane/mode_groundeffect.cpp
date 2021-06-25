@@ -1,6 +1,18 @@
 #include "mode.h"
 #include "Plane.h"
 
+// state space notes
+// state vector (x):
+// altitude  - rangefinder
+// vertical speed - get_velocity_ned()[2]
+// airspeed - plane.ahrs.airspeed_estimate()
+
+// input vector (u):
+// throttle percentage
+
+// output vector (y):
+// altitude
+
 bool ModeGroundEffect::_enter()
 {
     plane.throttle_allows_nudging = false;
@@ -30,8 +42,19 @@ bool ModeGroundEffect::_enter()
 
 void ModeGroundEffect::update()
 {
+    // get our new reading, if possible
+    if(plane.rangefinder.status_orient(ROTATION_PITCH_270) == RangeFinder::Status::Good){
+        _last_good_reading_mm = plane.rangefinder.distance_mm_orient(ROTATION_PITCH_270);
+        _last_good_reading_time_ms = AP_HAL::millis();
+    }
+
+    // If we haven't gotten a new reading in a while, assume that we are high and inject a high reading
+    if(AP_HAL::millis() - _last_good_reading_time_ms > 1000) {
+        _last_good_reading_mm = plane.g.gndEffect_alt_max;
+    }
+
     // This method runs at 400Hz. Rangefinder probably senses at 30Hz
-    int16_t errorMm = _alt_desired_mm - plane.rangefinder.distance_mm_orient(ROTATION_PITCH_270);
+    int16_t errorMm = _alt_desired_mm - _last_good_reading_mm;
 
     // Wings level. Note that the pilot can also have some authority if stick_mixing is enabled
     plane.nav_roll_cd = 0;

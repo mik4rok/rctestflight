@@ -38,6 +38,8 @@ public:
 
     enum Rotation orientation() const { return (Rotation)params.orientation.get(); }
     uint16_t distance_cm() const { return state.distance_cm; }
+    uint8_t strength_l() const {return (uint8_t) state.strength; }
+    uint8_t strength_h() const {return (uint8_t) (state.strength >> 8); }
     virtual bool supports_mm_precision() const { return false; }
     uint16_t distance_mm() const { return state.distance_mm; }
     uint16_t voltage_mv() const { return state.voltage_mv; }

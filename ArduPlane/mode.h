@@ -575,6 +575,8 @@ protected:
     float _thr_ff;
     int16_t _alt_desired_mm;
 
+    uint16_t _last_good_reading_mm;
+    uint32_t _last_good_reading_time_ms;
 };
 
 
