@@ -44,6 +44,7 @@ bool Plane::start_command(const AP_Mission::Mission_Command& cmd)
         break;
 
     case MAV_CMD_NAV_WAYPOINT:                  // Navigate to Waypoint
+    case 50:
         do_nav_wp(cmd);
         break;
 
@@ -216,6 +217,7 @@ bool Plane::verify_command(const AP_Mission::Mission_Command& cmd)        // Ret
         return verify_takeoff();
 
     case MAV_CMD_NAV_WAYPOINT:
+    case 50:
         return verify_nav_wp(cmd);
 
     case MAV_CMD_NAV_LAND:

@@ -95,10 +95,9 @@ bool AP_RangeFinder_Benewake::get_reading(uint16_t &reading_cm, uint16_t& streng
                     // Experimentally determined that small strength readings can result in bad readings
                     strength = ((uint16_t)linebuf[5] << 8) | linebuf[4];
                     if(strength <= 20){
-                        return false;
-                    }
-
-                    if (dist >= BENEWAKE_DIST_MAX_CM) {
+                        // If the strength is bad, just pretend this reading didn't happen
+                        ;
+                    } else if (dist >= BENEWAKE_DIST_MAX_CM) {
                         // this reading is out of range
                         count_out_of_range++;
                     } else if (!has_signal_byte()) {
