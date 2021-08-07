@@ -78,12 +78,26 @@ void ModeAuto::update()
         }
     } else if (nav_cmd_id == 50) {
         // this is mostly just a copy/paste from mode_groundeffect.cpp because I'm lazy
-        int16_t thr_ff = (plane.g.gndEffect_thr_max + plane.g.gndEffect_thr_min)/2.f;
-        int16_t alt_desired_mm = (plane.g.gndEffect_alt_max + plane.g.gndEffect_alt_min)/2;
-        int16_t errorMm = alt_desired_mm - plane.rangefinder.distance_mm_orient(ROTATION_PITCH_270);
-        plane.calc_nav_roll();
+        float _thr_ff = (plane.g.gndEffect_thr_max + plane.g.gndEffect_thr_min)/2.f;
+        static uint16_t _last_good_reading_mm;
+        static uint32_t _last_good_reading_time_ms;
+        int16_t _alt_desired_mm = (plane.g.gndEffect_alt_max + plane.g.gndEffect_alt_min)/2;
+
+        if(plane.rangefinder.status_orient(ROTATION_PITCH_270) == RangeFinder::Status::Good){
+            _last_good_reading_mm = plane.rangefinder.distance_mm_orient(ROTATION_PITCH_270);
+            _last_good_reading_time_ms = AP_HAL::millis();
+        }
+
+        if(AP_HAL::millis() - _last_good_reading_time_ms > 1000) {
+            _last_good_reading_mm = plane.g.gndEffect_alt_max;
+        }
+
+        int16_t errorMm = _alt_desired_mm - _last_good_reading_mm;
+        plane.nav_roll_cd = 0;
         plane.nav_pitch_cd = (int16_t) plane.g2.gndefct_ele.get_pid(errorMm);
-        int16_t throttle_command = plane.g2.gndefct_thr.get_pid(errorMm) + thr_ff;
+        plane.calc_nav_roll();
+        // plane.steering_control.rudder = plane.channel_rudder->get_control_in_zero_dz();
+        int16_t throttle_command = plane.g2.gndefct_thr.get_pid(errorMm) + _thr_ff;
         int16_t commanded_throttle = constrain_int16(throttle_command, plane.g.gndEffect_thr_min, plane.g.gndEffect_thr_max);
         commanded_throttle = constrain_int16(commanded_throttle, 0, 100);
         SRV_Channels::set_output_scaled(SRV_Channel::k_throttle, commanded_throttle);
