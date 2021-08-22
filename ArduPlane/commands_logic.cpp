@@ -44,7 +44,8 @@ bool Plane::start_command(const AP_Mission::Mission_Command& cmd)
         break;
 
     case MAV_CMD_NAV_WAYPOINT:                  // Navigate to Waypoint
-    case 50:
+    case 50: // ground effect waypoint
+    case 51: // higher ground effect waypoint
         do_nav_wp(cmd);
         break;
 
@@ -218,6 +219,7 @@ bool Plane::verify_command(const AP_Mission::Mission_Command& cmd)        // Ret
 
     case MAV_CMD_NAV_WAYPOINT:
     case 50:
+    case 51:
         return verify_nav_wp(cmd);
 
     case MAV_CMD_NAV_LAND:

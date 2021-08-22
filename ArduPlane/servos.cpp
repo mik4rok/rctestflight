@@ -629,7 +629,7 @@ void Plane::set_servos_flaps(void)
         }
     }
 
-    if((plane.get_mode() == Mode::Number::GROUND_EFFECT) || (plane.get_mode() == Mode::Number::AUTO && plane.mission.get_current_nav_cmd().id == 50)) {
+    if((plane.get_mode() == Mode::Number::GROUND_EFFECT) || (plane.get_mode() == Mode::Number::AUTO && (plane.mission.get_current_nav_cmd().id == 50 || plane.mission.get_current_nav_cmd().id == 51))) {
         auto_flap_percent = -plane.mode_groundeffect.desired_flap_percentage;
     }
 

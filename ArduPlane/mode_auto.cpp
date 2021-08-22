@@ -76,12 +76,18 @@ void ModeAuto::update()
         } else {
             plane.calc_throttle();
         }
-    } else if (nav_cmd_id == 50) {
+    } else if (nav_cmd_id == 50 || nav_cmd_id == 51) {
+        plane.SpdHgt_Controller->reset_pitch_I();
         // this is mostly just a copy/paste from mode_groundeffect.cpp because I'm lazy
         float _thr_ff = (plane.g.gndEffect_thr_max + plane.g.gndEffect_thr_min)/2.f;
         static uint16_t _last_good_reading_mm;
         static uint32_t _last_good_reading_time_ms;
         int16_t _alt_desired_mm = (plane.g.gndEffect_alt_max + plane.g.gndEffect_alt_min)/2;
+
+        // waypoint type 51 means higher-altitude ground effect mode
+        if (nav_cmd_id == 51) {
+            _alt_desired_mm *= 2;
+        }
 
         if(plane.rangefinder.status_orient(ROTATION_PITCH_270) == RangeFinder::Status::Good){
             _last_good_reading_mm = plane.rangefinder.distance_mm_orient(ROTATION_PITCH_270);
