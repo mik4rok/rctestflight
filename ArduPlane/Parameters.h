@@ -338,6 +338,8 @@ public:
         k_param_pidTeThrottle, // unused
         k_param_pidNavPitchAltitude, // unused
         // k_param_pidWheelSteer, // unused
+
+        k_param_gndefct_51_multiplier = 246,
         k_param_gndEffect_alt_max = 247, // just replaced the previous unused one. not sure if that's kosher
 
         k_param_mixing_offset,
@@ -358,6 +360,8 @@ public:
     AP_Int16 gndEffect_thr_max;
     AP_Int16 gndEffect_alt_min;
     AP_Int16 gndEffect_alt_max;
+
+    AP_Float gndefct_51_multiplier;
 
     AP_Int16 format_version;
 

@@ -86,7 +86,7 @@ void ModeAuto::update()
 
         // waypoint type 51 means higher-altitude ground effect mode
         if (nav_cmd_id == 51) {
-            _alt_desired_mm *= 2;
+            _alt_desired_mm *= plane.g.gndefct_51_multiplier;
         }
 
         if(plane.rangefinder.status_orient(ROTATION_PITCH_270) == RangeFinder::Status::Good){
@@ -96,6 +96,9 @@ void ModeAuto::update()
 
         if(AP_HAL::millis() - _last_good_reading_time_ms > 1000) {
             _last_good_reading_mm = plane.g.gndEffect_alt_max;
+            if (nav_cmd_id == 51) {
+                _last_good_reading_mm *= plane.g.gndefct_51_multiplier;
+            }
         }
 
         int16_t errorMm = _alt_desired_mm - _last_good_reading_mm;
