@@ -199,6 +199,8 @@ private:
 
     AP_RPM rpm_sensor;
 
+    AP_GroundEffectController groundEffectController;
+
     AP_TECS TECS_controller{ahrs, aparm, landing};
     AP_L1_Control L1_controller{ahrs, &TECS_controller};
 
@@ -310,6 +312,9 @@ private:
 
     // This is used to enable the inverted flight feature
     bool inverted_flight;
+
+    // This is used to enable the ground effect sub-mode of fbwa
+    bool ground_effect_submode;
 
     // last time we ran roll/pitch stabilization
     uint32_t last_stabilize_ms;
