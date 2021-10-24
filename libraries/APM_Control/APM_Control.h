@@ -2,4 +2,3 @@
 #include "AP_PitchController.h"
 #include "AP_YawController.h"
 #include "AP_SteerController.h"
-#include "AP_GroundEffectController.h"

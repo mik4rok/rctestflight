@@ -64,6 +64,48 @@ const AP_Param::GroupInfo AP_GroundEffectController::var_info[] = {
     // @User: Standard
     AP_SUBGROUPINFO(_pitch_pid, "_PITCH_", 2, AP_GroundEffectController, PID),
 
+	// @Param: THR_REF
+	// @DisplayName: Ground Effect desired throttle (percentage)
+	// @Description:
+	// @Range: 0.0 1.0
+	// @Increment: 0.01
+    // @User: Standard
+	AP_GROUPINFO("_THR_REF",   3, AP_GroundEffectController, _THR_REF,   0.2),
+
+	// @Param: THR_MIN
+	// @DisplayName: Ground Effect desired throttle (percentage)
+	// @Description:
+	// @Range: 0.0 1.0
+	// @Increment: 0.01
+    // @User: Standard
+	AP_GROUPINFO("_THR_MIN",   3, AP_GroundEffectController, _THR_MIN,   0.2),
+
+    // @Param: THR_MAX
+	// @DisplayName: Ground Effect desired throttle (percentage)
+	// @Description:
+	// @Range: 0.0 1.0
+	// @Increment: 0.01
+    // @User: Standard
+	AP_GROUPINFO("_THR_MAX",   3, AP_GroundEffectController, _THR_MAX,   0.2),
+
+	// @Param: ALT_REF
+	// @DisplayName: Ground Effect desired altitude (meters)
+	// @Description:
+	// @Range: 0.0 1.0
+	// @Increment: 0.01
+    // @User: Standard
+	AP_GROUPINFO("_ALT_REF",   3, AP_GroundEffectController, _ALT_REF,   0.2),
+
+	// @Param: CUTOFF_FREQ
+	// @DisplayName: TODO choose a good number here
+	// @Description:
+	// @Range: 
+	// @Increment: 0.01
+    // @User: Advanced
+	AP_GROUPINFO("_CUTOFF_FRQ",   3, AP_GroundEffectController, _CUTOFF_FREQ,   0.5),
+
+    // TODO does this "param group" need to be added to plane?
+
     AP_GROUPEND
 };
 
@@ -83,19 +125,9 @@ bool AP_GroundEffectController::user_request_enable(bool enable)
 
 void AP_GroundEffectController::reset()
 {
-    _altFilter.set_cutoff_frequency(0.05); // TODO should be parameter!
+    _altFilter.set_cutoff_frequency(_CUTOFF_FREQ);
     _altFilter.reset();
-    // TODO reset complementary filter
-    // TODO reset pid I term for pitch and throttle pid controllers
 
-    // The nominal throttle (throttle at zero error) should be the midpoint between the high and low throttle parameters
-    // _thr_ff = (plane.g.gndEffect_thr_max + plane.g.gndEffect_thr_min)/2.f;
-
-    // // The desired altitude should be the midpoint between the high and low altitude parameters
-    // _alt_desired_mm = (plane.g.gndEffect_alt_max + plane.g.gndEffect_alt_min)/2;
-
-    // float new_thr_p = ((float) (plane.g.gndEffect_thr_max - plane.g.gndEffect_thr_min)) / ((float) (plane.g.gndEffect_alt_max - plane.g.gndEffect_alt_min));
-    // plane.g2.gndefct_thr.kP(new_thr_p);
     _pitch_pid.reset_I();
     _throttle_pid.reset_I();
     return;
@@ -107,17 +139,14 @@ void AP_GroundEffectController::update()
     bool ahrs_ok = _ahrs.get_relative_position_D_origin(ahrs_alt);
     (void) ahrs_ok;
     // TODO what if ahrs_ok isn't ok? what if plane.rangefinder.status_orient(ROTATION_PITCH_270) != RangeFinder::Status::Good?
+    // probably just use most recent one
     _altFilter.apply(_rangefinder.distance_orient(ROTATION_PITCH_270), ahrs_alt, AP_HAL::micros());
 
-    // TODO give error to these controllers. actual minus desired.
-
-    float error = _altFilter.get(); // subtract expected. maybe minus?
+    float error = _ALT_REF - _altFilter.get();
 
     _pitch = _pitch_pid.get_pid(error);
-    _throttle = _throttle_pid.get_pid(error); // plus ff
-
-    // TODO make these parameters exist
-    //_throttle = constrain_int16(_throttle, plane.g.gndEffect_thr_min, plane.g.gndEffect_thr_max);
+    _throttle = _throttle_pid.get_pid(error) + _THR_REF;
+    _throttle = constrain_int16(_throttle, _THR_MIN, _THR_MAX);
 
     return;
 }
