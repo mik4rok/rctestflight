@@ -15,7 +15,13 @@ void ModeFBWA::update()
     
     if(plane.groundEffectController.enabled_by_user()){
         plane.groundEffectController.update();
-        SRV_Channels::set_output_scaled(SRV_Channel::k_throttle, plane.groundEffectController.get_throttle());
+        // If the rc throttle input is zero, zero the throttle
+        // This allows the user to stop flight by reflexively cutting the throttle
+        if(plane.get_throttle_input(false) == 0){
+            SRV_Channels::set_output_scaled(SRV_Channel::k_throttle, 0);
+        } else {
+            SRV_Channels::set_output_scaled(SRV_Channel::k_throttle, plane.groundEffectController.get_throttle());
+        }
         plane.nav_pitch_cd += plane.groundEffectController.get_pitch(); // Note that this stacks
     } else {
         plane.adjust_nav_pitch_throttle();

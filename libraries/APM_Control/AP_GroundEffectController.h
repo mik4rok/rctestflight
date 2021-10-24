@@ -1,16 +1,21 @@
 #pragma once
 
+#include <AP_AHRS/AP_AHRS.h>
 #include <AP_Common/AP_Common.h>
 #include <AP_Vehicle/AP_Vehicle.h>
 #include "AP_AutoTune.h"
 #include <AP_Logger/AP_Logger.h>
 #include <AP_Math/AP_Math.h>
-#include <AC_PID/AC_PID.h>
+#include <PID/PID.h>
+#include <AP_RangeFinder/AP_RangeFinder.h>
 #include <Filter/ComplementaryFilter.h>
 
 class AP_GroundEffectController {
 public:
-    AP_GroundEffectController();
+    AP_GroundEffectController(AP_AHRS& ahrs, RangeFinder& rangefinder)
+        : _ahrs{ahrs}
+        , _rangefinder{rangefinder}
+        , _enabled{false} {};
 
     /* Do not allow copies */
     AP_GroundEffectController(const AP_GroundEffectController &other) = delete;
@@ -18,7 +23,7 @@ public:
 
     bool user_request_enable(bool enable);
 
-    bool enabled_by_user() { return false; }
+    bool enabled_by_user() { return _enabled; }
 
     void update();
 
@@ -33,12 +38,17 @@ public:
     int16_t get_throttle() { return _throttle; }
 
 private:
-    AC_PID pid{0.04, 0.15, 0, 0.345, 0.666, 3, 0, 12, 0.02, 150, 1};
+    // TODO set reasonable numbers here
+    PID _pitch_pid{0.04, 0.15, 0, 1000};
+    PID _throttle_pid{0.04, 0.15, 0, 1000};
 
     AP_Logger::PID_Info _pid_info;
 
-    ComplementaryFilter _filteredRangefinder; // should be reference?
+    AP_AHRS& _ahrs;
+    RangeFinder& _rangefinder;
+    ComplementaryFilter _altFilter; // should be reference?
 
+    bool _enabled;
     int32_t _pitch;
     int16_t _throttle;
 };
