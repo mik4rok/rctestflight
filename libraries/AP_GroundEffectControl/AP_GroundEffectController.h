@@ -52,6 +52,9 @@ private:
     RangeFinder& _rangefinder;
     ComplementaryFilter _altFilter;
 
+    float _last_good_ahrs_reading;
+    float _last_good_rangefinder_reading;
+
     bool _enabled;
     int32_t _pitch;
     int16_t _throttle;

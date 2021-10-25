@@ -97,7 +97,7 @@ const AP_Param::GroupInfo AP_GroundEffectController::var_info[] = {
 	AP_GROUPINFO("_ALT_REF",   3, AP_GroundEffectController, _ALT_REF,   0.2),
 
 	// @Param: CUTOFF_FREQ
-	// @DisplayName: TODO choose a good number here
+	// @DisplayName:
 	// @Description:
 	// @Range: 
 	// @Increment: 0.01
@@ -105,6 +105,9 @@ const AP_Param::GroupInfo AP_GroundEffectController::var_info[] = {
 	AP_GROUPINFO("_CUTOFF_FRQ",   3, AP_GroundEffectController, _CUTOFF_FREQ,   0.5),
 
     // TODO does this "param group" need to be added to plane?
+    // TODO fix up these comments and choose reasonable defaults
+
+    // new param for max roll rate in auto mode?
 
     AP_GROUPEND
 };
@@ -136,11 +139,14 @@ void AP_GroundEffectController::reset()
 void AP_GroundEffectController::update()
 {
     float ahrs_alt;
-    bool ahrs_ok = _ahrs.get_relative_position_D_origin(ahrs_alt);
-    (void) ahrs_ok;
-    // TODO what if ahrs_ok isn't ok? what if plane.rangefinder.status_orient(ROTATION_PITCH_270) != RangeFinder::Status::Good?
-    // probably just use most recent one
-    _altFilter.apply(_rangefinder.distance_orient(ROTATION_PITCH_270), ahrs_alt, AP_HAL::micros());
+    if (_ahrs.get_relative_position_D_origin(ahrs_alt)) {
+        _last_good_ahrs_reading = ahrs_alt;
+    }
+    if(_rangefinder.status_orient(ROTATION_PITCH_270) == RangeFinder::Status::Good) {
+        _last_good_rangefinder_reading = _rangefinder.distance_orient(ROTATION_PITCH_270);
+    }
+
+    _altFilter.apply(_last_good_rangefinder_reading, _last_good_ahrs_reading, AP_HAL::micros());
 
     float error = _ALT_REF - _altFilter.get();
 
