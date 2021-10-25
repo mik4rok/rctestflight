@@ -21,6 +21,8 @@
 
 extern const AP_HAL::HAL& hal;
 
+constexpr uint32_t RESET_TIMEOUT_MICROS{1000000};
+
 const AP_Param::GroupInfo AP_GroundEffectController::var_info[] = {
     // @Param: P
     // @DisplayName: P gain
@@ -106,14 +108,15 @@ const AP_Param::GroupInfo AP_GroundEffectController::var_info[] = {
 
     // TODO does this "param group" need to be added to plane?
     // TODO fix up these comments and choose reasonable defaults
-
     // new param for max roll rate in auto mode?
+    // figure out what to do if the user uses ground effect waypoints but didn't configure things
 
     AP_GROUPEND
 };
 
 bool AP_GroundEffectController::user_request_enable(bool enable)
 {
+    // TODO maybe sanity check parameters
     if(enable){
         if(!_rangefinder.has_orientation(ROTATION_PITCH_270)){
             _enabled = false;
@@ -138,6 +141,12 @@ void AP_GroundEffectController::reset()
 
 void AP_GroundEffectController::update()
 {
+    uint32_t time = AP_HAL::micros();
+    if(_last_time_called - time > RESET_TIMEOUT_MICROS){
+        reset();
+    }
+    _last_time_called = time;
+
     float ahrs_alt;
     if (_ahrs.get_relative_position_D_origin(ahrs_alt)) {
         _last_good_ahrs_reading = ahrs_alt;
@@ -146,7 +155,7 @@ void AP_GroundEffectController::update()
         _last_good_rangefinder_reading = _rangefinder.distance_orient(ROTATION_PITCH_270);
     }
 
-    _altFilter.apply(_last_good_rangefinder_reading, _last_good_ahrs_reading, AP_HAL::micros());
+    _altFilter.apply(_last_good_rangefinder_reading, _last_good_ahrs_reading, time);
 
     float error = _ALT_REF - _altFilter.get();
 

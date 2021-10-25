@@ -18,8 +18,6 @@ public:
 
     bool user_request_enable(bool enable);
 
-    // TODO auto mode should refuse to accept the mission if the AP_GroundEffectController doesn't exist. also implement auto mode stuff.
-
     bool enabled_by_user() { return _enabled; }
 
     void update();
@@ -44,9 +42,10 @@ private:
     AP_Float _THR_MAX;
     AP_Float _ALT_REF;
     AP_Float _CUTOFF_FREQ;
-    // AP_Int16 _imax;
 
     AP_Logger::PID_Info _pid_info;
+
+    uint32_t _last_time_called;
 
     AP_AHRS& _ahrs;
     RangeFinder& _rangefinder;
