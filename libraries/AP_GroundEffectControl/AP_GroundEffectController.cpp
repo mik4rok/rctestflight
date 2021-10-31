@@ -23,7 +23,7 @@ extern const AP_HAL::HAL& hal;
 
 constexpr uint32_t RESET_TIMEOUT_MICROS{1000000};
 
-const AP_Param::GroupInfo AP_GroundEffectController::var_info[] = {
+const AP_Param::GroupInfo GroundEffectController::var_info[] = {
     // @Param: P
     // @DisplayName: P gain
     // @Description: P gain
@@ -43,7 +43,7 @@ const AP_Param::GroupInfo AP_GroundEffectController::var_info[] = {
     // @DisplayName: IMax
     // @Description: Maximum integrator value
     // @User: Standard
-    AP_SUBGROUPINFO(_throttle_pid, "_THR_", 1, AP_GroundEffectController, PID),
+    AP_SUBGROUPINFO(_throttle_pid, "_THR_", 1, GroundEffectController, PID),
 
         // @Param: P
     // @DisplayName: P gain
@@ -64,7 +64,7 @@ const AP_Param::GroupInfo AP_GroundEffectController::var_info[] = {
     // @DisplayName: IMax
     // @Description: Maximum integrator value
     // @User: Standard
-    AP_SUBGROUPINFO(_pitch_pid, "_PITCH_", 2, AP_GroundEffectController, PID),
+    AP_SUBGROUPINFO(_pitch_pid, "_PITCH_", 2, GroundEffectController, PID),
 
 	// @Param: THR_REF
 	// @DisplayName: Ground Effect desired throttle (percentage)
@@ -72,7 +72,7 @@ const AP_Param::GroupInfo AP_GroundEffectController::var_info[] = {
 	// @Range: 0.0 1.0
 	// @Increment: 0.01
     // @User: Standard
-	AP_GROUPINFO("_THR_REF",   3, AP_GroundEffectController, _THR_REF,   0.2),
+	AP_GROUPINFO("_THR_REF",   3, GroundEffectController, _THR_REF,   0.2),
 
 	// @Param: THR_MIN
 	// @DisplayName: Ground Effect desired throttle (percentage)
@@ -80,7 +80,7 @@ const AP_Param::GroupInfo AP_GroundEffectController::var_info[] = {
 	// @Range: 0.0 1.0
 	// @Increment: 0.01
     // @User: Standard
-	AP_GROUPINFO("_THR_MIN",   3, AP_GroundEffectController, _THR_MIN,   0.2),
+	AP_GROUPINFO("_THR_MIN",   4, GroundEffectController, _THR_MIN,   0.2),
 
     // @Param: THR_MAX
 	// @DisplayName: Ground Effect desired throttle (percentage)
@@ -88,7 +88,7 @@ const AP_Param::GroupInfo AP_GroundEffectController::var_info[] = {
 	// @Range: 0.0 1.0
 	// @Increment: 0.01
     // @User: Standard
-	AP_GROUPINFO("_THR_MAX",   3, AP_GroundEffectController, _THR_MAX,   0.2),
+	AP_GROUPINFO("_THR_MAX",   5, GroundEffectController, _THR_MAX,   0.2),
 
 	// @Param: ALT_REF
 	// @DisplayName: Ground Effect desired altitude (meters)
@@ -96,7 +96,7 @@ const AP_Param::GroupInfo AP_GroundEffectController::var_info[] = {
 	// @Range: 0.0 1.0
 	// @Increment: 0.01
     // @User: Standard
-	AP_GROUPINFO("_ALT_REF",   3, AP_GroundEffectController, _ALT_REF,   0.2),
+	AP_GROUPINFO("_ALT_REF",   6, GroundEffectController, _ALT_REF,   0.2),
 
 	// @Param: CUTOFF_FREQ
 	// @DisplayName:
@@ -104,7 +104,7 @@ const AP_Param::GroupInfo AP_GroundEffectController::var_info[] = {
 	// @Range: 
 	// @Increment: 0.01
     // @User: Advanced
-	AP_GROUPINFO("_CUTOFF_FRQ",   3, AP_GroundEffectController, _CUTOFF_FREQ,   0.5),
+	AP_GROUPINFO("_CUTOFF_FRQ",   7, GroundEffectController, _CUTOFF_FREQ,   0.5),
 
     // TODO does this "param group" need to be added to plane?
     // TODO fix up these comments and choose reasonable defaults
@@ -114,7 +114,7 @@ const AP_Param::GroupInfo AP_GroundEffectController::var_info[] = {
     AP_GROUPEND
 };
 
-bool AP_GroundEffectController::user_request_enable(bool enable)
+bool GroundEffectController::user_request_enable(bool enable)
 {
     // TODO maybe sanity check parameters
     if(enable){
@@ -129,7 +129,7 @@ bool AP_GroundEffectController::user_request_enable(bool enable)
     return true;
 }
 
-void AP_GroundEffectController::reset()
+void GroundEffectController::reset()
 {
     _altFilter.set_cutoff_frequency(_CUTOFF_FREQ);
     _altFilter.reset();
@@ -139,7 +139,7 @@ void AP_GroundEffectController::reset()
     return;
 }
 
-void AP_GroundEffectController::update()
+void GroundEffectController::update()
 {
     uint32_t time = AP_HAL::micros();
     if(_last_time_called - time > RESET_TIMEOUT_MICROS){

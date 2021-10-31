@@ -200,8 +200,6 @@ private:
 
     AP_RPM rpm_sensor;
 
-    AP_GroundEffectController groundEffectController{ahrs, rangefinder};
-
     AP_TECS TECS_controller{ahrs, aparm, landing};
     AP_L1_Control L1_controller{ahrs, &TECS_controller};
 

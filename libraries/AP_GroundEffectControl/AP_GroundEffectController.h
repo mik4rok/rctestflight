@@ -5,16 +5,16 @@
 #include <AP_RangeFinder/AP_RangeFinder.h>
 #include <Filter/ComplementaryFilter.h>
 
-class AP_GroundEffectController {
+class GroundEffectController {
 public:
-    AP_GroundEffectController(AP_AHRS& ahrs, RangeFinder& rangefinder)
+    GroundEffectController(AP_AHRS& ahrs, RangeFinder& rangefinder)
         : _ahrs{ahrs}
         , _rangefinder{rangefinder}
         , _enabled{false} {};
 
     /* Do not allow copies */
-    AP_GroundEffectController(const AP_GroundEffectController &other) = delete;
-    AP_GroundEffectController &operator=(const AP_GroundEffectController&) = delete;
+    GroundEffectController(const GroundEffectController &other) = delete;
+    GroundEffectController &operator=(const GroundEffectController&) = delete;
 
     bool user_request_enable(bool enable);
 

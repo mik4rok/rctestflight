@@ -87,9 +87,9 @@ void ModeAuto::update()
             plane.calc_throttle();
         }
     } else if (nav_cmd_id == MAV_CMD_NAV_WAYPOINT_GROUND_EFFECT) {
-        plane.groundEffectController.update();
-        SRV_Channels::set_output_scaled(SRV_Channel::k_throttle, plane.groundEffectController.get_throttle());
-        plane.nav_pitch_cd = plane.groundEffectController.get_pitch();
+        plane.g2.ground_effect_controller.update();
+        SRV_Channels::set_output_scaled(SRV_Channel::k_throttle, plane.g2.ground_effect_controller.get_throttle());
+        plane.nav_pitch_cd = plane.g2.ground_effect_controller.get_pitch();
         plane.calc_nav_roll();
     } else {
         // we are doing normal AUTO flight, the special cases
