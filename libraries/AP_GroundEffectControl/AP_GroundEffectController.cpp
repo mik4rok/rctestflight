@@ -144,7 +144,7 @@ void GroundEffectController::reset()
 
 int32_t GroundEffectController::get_auto_lim_roll_cd()
 {
-    if(_LIM_ROLL == 0.0){
+    if(_LIM_ROLL <= 0.0001f){
         return INT32_MAX;
     }
     return int32_t(_LIM_ROLL*100.0);
