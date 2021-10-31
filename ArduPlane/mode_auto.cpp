@@ -91,6 +91,8 @@ void ModeAuto::update()
         SRV_Channels::set_output_scaled(SRV_Channel::k_throttle, plane.g2.ground_effect_controller.get_throttle());
         plane.nav_pitch_cd = plane.g2.ground_effect_controller.get_pitch();
         plane.calc_nav_roll();
+        uint32_t roll_limit_cd = plane.g2.ground_effect_controller.get_auto_lim_roll_cd();
+        plane.nav_roll_cd = constrain_int32(plane.nav_roll_cd, -roll_limit_cd, roll_limit_cd);
     } else {
         // we are doing normal AUTO flight, the special cases
         // are for takeoff and landing

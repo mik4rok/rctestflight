@@ -28,20 +28,22 @@ public:
 
 	static const struct AP_Param::GroupInfo var_info[];
 
+    int32_t get_auto_lim_roll_cd();
+
     int32_t get_pitch() { return _pitch; }
 
     int16_t get_throttle() { return _throttle; }
 
 private:
-    // TODO set reasonable numbers here. Also set all other default params and ranges and descriptions
-    PID _pitch_pid{0.04, 0.15, 0, 1000};
-    PID _throttle_pid{0.04, 0.15, 0, 1000};
+    PID _pitch_pid{120.0, 0.0, 0.0, 1000};
+    PID _throttle_pid{64, 0.0, 20.0, 1000};
 
 	AP_Float _THR_REF;
     AP_Float _THR_MIN;
     AP_Float _THR_MAX;
     AP_Float _ALT_REF;
     AP_Float _CUTOFF_FREQ;
+    AP_Float _LIM_ROLL;
 
     AP_Logger::PID_Info _pid_info;
 
