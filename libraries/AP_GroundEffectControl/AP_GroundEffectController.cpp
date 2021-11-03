@@ -153,14 +153,14 @@ int32_t GroundEffectController::get_auto_lim_roll_cd()
 void GroundEffectController::update()
 {
     uint32_t time = AP_HAL::micros();
-    if(_last_time_called - time > RESET_TIMEOUT_MICROS){
+    if(time - _last_time_called > RESET_TIMEOUT_MICROS){
         reset();
     }
     _last_time_called = time;
 
-    float ahrs_alt;
-    if (_ahrs.get_relative_position_D_origin(ahrs_alt)) {
-        _last_good_ahrs_reading = ahrs_alt;
+    float ahrs_negative_alt;
+    if (_ahrs.get_relative_position_D_origin(ahrs_negative_alt)) { // todo must be ekf
+        _last_good_ahrs_reading = -ahrs_negative_alt;
     }
     if(_rangefinder.status_orient(ROTATION_PITCH_270) == RangeFinder::Status::Good) {
         _last_good_rangefinder_reading = _rangefinder.distance_orient(ROTATION_PITCH_270);
